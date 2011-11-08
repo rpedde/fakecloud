@@ -27,6 +27,7 @@ function init() {
     EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
 
     LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
+    VIRT_TEMPLATE=${VIRT_TEMPLATE-kvm}
 
     if [ "${SSH_KEY-}" == "" ]; then
 	if [ "${SUDO_USER-}" != "" ]; then
@@ -101,9 +102,6 @@ function spin_instance() {
 
     maybe_make_default_flavors
 
-    # how to set this?
-    template=kvm
-
     if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
 	log "No instance definition for flavor \"${flavor}\""
 	trap - ERR EXIT
@@ -141,7 +139,7 @@ function spin_instance() {
     log "bridge:    ${FLAVOR[bridge]}"
 
     # now, we have to generate the template xml...
-    eval "echo \"$(< ${BASE_DIR}/flavors/template/${template})\"" > ${BASE_DIR}/instances/${name}/${name}.xml
+    eval "echo \"$(< ${BASE_DIR}/flavors/template/${VIRT_TEMPLATE})\"" > ${BASE_DIR}/instances/${name}/${name}.xml
 
     log_debug "running plugins"
 
