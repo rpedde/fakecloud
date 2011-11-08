@@ -140,7 +140,7 @@ function spin_instance() {
     log "Starting instance..."
     virsh start ${name}
 
-    if [ "${POST_INSTALL}" != "" ]; then
+    if [ "${POST_INSTALL-}" != "" ]; then
 	log_debug "Waiting for instance spin-up..."
 	# wait for instance to spin up, then run post_install
 	count=0
@@ -332,7 +332,7 @@ EOF
     mount --bind /dev ${working}/mnt/dev
     chroot ${working}/mnt /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
 
-    /usr/sbin/grub-install --no-floppy --grub-mkdevicemap=${working}/mnt/boot/grub/device.map --root-directory=${working}/mnt ${base_loop}
+    chroot ${working}/mnt /usr/sbin/grub-install --no-floppy --grub-mkdevicemap=/boot/grub/device.map --root-directory=/ ${base_loop}
 
     # turn off ubuntu ridiculousness
     if [ -e ${working}/mnt/boot/grub/grub.cfg ]; then
