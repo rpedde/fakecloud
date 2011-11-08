@@ -1,0 +1,98 @@
+#!/bin/bash
+
+. $(dirname $0)/virt.sh
+
+
+function usage() {
+    echo -e "${prog} [command] [args]\n"
+    echo "Valid commands:"
+    echo "  create [name] [distrelease]"
+    echo -e "  destroy [name]\n"
+    echo "Valid args:"
+    echo "  -d           enable debug"
+    echo "  -f [flavor]  create instance using flavor"
+    echo "  -h [hints]   create using specified hints"
+
+    trap - ERR EXIT
+    exit 1
+}
+
+prog=$0
+
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+while getopts "f:dp:h:" option; do
+    case $option in
+	h)
+	    HINTS=${OPTARG}
+	    ;;
+	p)
+	    POST_INSTALL=${OPTARG}
+	    ;;
+	d)
+	    DEBUG=1
+	    ;;
+	f)
+	    FLAVOR=${OPTARG}
+	    ;;
+	*)
+	    usage
+	    ;;
+    esac
+done
+
+shift $(($OPTIND - 1))
+
+init
+
+# get positional arguments
+action=${1}
+shift
+
+case $action in
+    create)
+	name=${1}
+	distrelease=${2}
+	log "Spinning instance named \"${name}\" as ${distrelease}"
+	spin_instance ${name} ${FLAVOR-tiny} ${distrelease}
+	;;
+    destroy)
+	name=${1}
+	log "Destroying instance named \"${name}\""
+	destroy_instance_by_name $name
+	;;
+    list)
+	log "Defined instances:"
+	instances=$(ls ${BASE_DIR}/instances | sort)
+	virsh_status=$(virsh list --all)
+	count=0
+	for instance in ${instances}; do
+	    count=$(( count + 1 ))
+	    output="  ${instance}: "
+	    if $(echo "${virsh_status}" | grep -q "${instance}"); then
+		output+="DEFINED "
+		if $(echo "${virsh_status}" | grep -q "powered off"); then
+		    output+="OFF "
+		else
+		    output+="ON "
+		fi
+	    else
+		output+="UNDEFINED"
+	    fi
+	    log "${output}"
+	done
+
+	if [ $count -eq 0 ]; then
+	    log "  (NONE)"
+	fi
+	;;
+
+    *)
+	log "Unknown command: ${action}"
+	usage
+	;;
+esac
+
+deinit

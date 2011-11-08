@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+case ${distrelease} in
+    ubuntu*|debian*)
+	echo "Setting hostname..."
+	echo ${name} > ${mnt}/etc/hostname
+	;;
+    *)
+	echo "Skipping hostname.  Unknown distrelease"
+	;;
+esac
+
+
+

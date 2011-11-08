@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+case ${distrelease} in
+    ubuntu*|debian*)
+	if [ "${SUDO_USER-}" != "" ]; then
+	    pwhash=$(egrep "^${SUDO_USER}:" /etc/shadow | cut -d: -f2)
+	    chroot ${mnt} /usr/sbin/useradd -s /bin/bash -m -p "${pwhash}" ${SUDO_USER}
+	    mkdir ${mnt}/home/${SUDO_USER}/.ssh
+	    chmod 700 ${mnt}/home/${SUDO_USER}/.ssh
+	    cat /home/${SUDO_USER}/.ssh/id*pub >> ${mnt}/home/${SUDO_USER}/.ssh/authorized_keys
+	    chmod 600 ${mnt}/home/${SUDO_USER}/.ssh/*
+	    chroot ${mnt} chown -R ${SUDO_USER}: /home/${SUDO_USER}/.ssh
+
+	    if [ -e ${mnt}/etc/sudoers ]; then
+		echo "${SUDO_USER} ALL=(ALL) NOPASSWD:ALL" >> ${mnt}/etc/sudoers
+	    fi
+	fi
+	;;
+    *)
+	echo "Skipping user addition.  Unknown distrelease"
+	;;
+esac
+
+

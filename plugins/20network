@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+case ${distrelease} in
+    ubuntu*|debian*)
+	cat > ${mnt}/etc/network/interfaces <<EOF
+auto lo eth0
+iface lo inet loopback
+
+allow-hotplug eth0
+iface eth0 inet dhcp
+EOF
+	# # temporarily remove upstart crap...
+	# if [ -e ${mnt}/sbin/initctl ]; then
+	#     mv ${mnt}/sbin/initctl ${mnt}/sbin/initctl.old
+	#     ln -s /bin/true ${mnt}/sbin/initctl
+	# fi
+
+	# chroot ${mnt} apt-get install -y --force-yes libnss-mdns avahi-daemon
+
+	# if [ -e ${mnt}/sbin/initctl.old ]; then
+	#     rm -f ${mnt}/sbin/initctl
+	#     mv ${mnt}/sbin/initctl.old ${mnt}/sbin/initctl
+	# fi
+	;;
+    *)
+	echo "Skipping network creation.  Unknown distrelease"
+	;;
+esac
+
+

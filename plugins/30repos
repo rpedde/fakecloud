@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+dist=${distrelease%%-*}
+release=${distrelease##*-}
+
+case ${dist} in
+    ubuntu)
+	cat > ${mnt}/etc/apt/sources.list.d/local.list <<EOF
+deb http://mirror.rackspace.com/ubuntu ${release} main universe multiverse
+deb http://mirror.rackspace.com/ubuntu ${release}-updates main universe multiverse
+EOF
+
+        chroot ${mnt} apt-get update
+	;;
+    *)
+	echo "Can't do that, boss"
+	;;
+esac
+
+
