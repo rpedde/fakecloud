@@ -308,7 +308,7 @@ function expand_dist_to_sized_base() {
     # FIXME: debian specific
     log_debug "Installing kernel..."
     package=linux-image-virtual
-    grub_package=grub
+    grub_package=grub-pc
 
     if [ "${dist}" == "debian" ]; then
 	package=linux-image-${arch}
