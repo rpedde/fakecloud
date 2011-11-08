@@ -6,14 +6,27 @@
 
 function init() {
     # set up globals, read from config file, potentially
+    if [ "${USER-}" != "root" ]; then
+	echo "Must be running as root (try sudo)."
+	exit 1
+    fi
 
-    BASE_DIR=/var/lib/spin
-    LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
-    NBD_DEVICE=/dev/nbd2
-    PLUGIN_DIR=$(dirname $0)/plugins
-    POSTINSTALL_DIR=$(dirname $0)/post-install
+    REAL_USER=${USER-}
+    if [ "${SUDO_USER-}" != "" ]; then
+	REAL_USER=${SUDO_USER}
+    fi
+
+    REAL_HOMEDIR=${REAL_HOMEDIR-/home/${REAL_USER}}
+    [ -e ${REAL_HOMEDIR}/.fakecloudrc ] && . ${REAL_HOMEDIR}/.fakecloudrc
+
+    BASE_DIR=${BASE_DIR-/var/lib/spin}
+    NBD_DEVICE=${NBD_DEVICE-/dev/nbd2} # qemu-nbd is hacky as crap...
+    PLUGIN_DIR=${PLUGIN_DIR-$(dirname $0)/plugins}
+    POSTINSTALL_DIR=${POSTINSTALL_DIR-$(dirname $0)/post-install}
 
     EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
+
+    LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
 
     if [ "${SSH_KEY-}" == "" ]; then
 	if [ "${SUDO_USER-}" != "" ]; then
@@ -22,7 +35,6 @@ function init() {
 	    SSH_KEY=${HOME}/.ssh/id_[rd]sa.pub
 	fi
     fi
-    ROOT_PASSWORD=${ROOT_PASSWORD-secret}
 
     # fix up logging
     exec 3>&1
