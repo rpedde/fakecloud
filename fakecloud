@@ -2,6 +2,14 @@
 
 . $(dirname $0)/virt.sh
 
+function require() {
+    # $1 how many args required
+    if [ ${#ARGV[@]} -ne ${1} ]; then
+	log "ERROR Missing arguments: expecting ${1}, got ${#ARGV[@]}"
+	exec 1>&3
+	usage
+    fi
+}
 
 function usage() {
     echo -e "${prog} [command] [args]\n"
@@ -51,14 +59,18 @@ init
 action=${1}
 shift
 
+ARGV=("$@")
+
 case $action in
     create)
+	require 2
 	name=${1}
 	distrelease=${2}
 	log "Spinning instance named \"${name}\" as ${distrelease}"
 	spin_instance ${name} ${FLAVOR-tiny} ${distrelease}
 	;;
     destroy)
+	require 1
 	name=${1}
 	log "Destroying instance named \"${name}\""
 	destroy_instance_by_name $name
