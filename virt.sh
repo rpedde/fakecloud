@@ -420,7 +420,9 @@ function maybe_make_dist_image() {
 
     # set root password
     if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
-	chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
+	if [ "${ROOT_PASSWORD}" != "" ]; then
+	    chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
+	fi
     fi
 
     log "building tarball"
