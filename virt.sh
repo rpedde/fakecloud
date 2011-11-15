@@ -354,6 +354,7 @@ EOF
     umount ${working}/mnt/dev
     umount ${working}/mnt
     losetup -d ${part_loop}
+    sleep 1
     kpartx -d ${base_loop}
     losetup -d ${base_loop}
 
