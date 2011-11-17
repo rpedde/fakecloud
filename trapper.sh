@@ -18,7 +18,7 @@ function interested() {
     # $1 - type (pre|post)
     # $2 - function interested in
     # $3 - function to call
-    if [ "${TRAPPER_INTERESTED[${1}_${2}]-}" == "" ]; then
+    if [[ "${TRAPPER_INTERESTED[${1}_${2}]-}" = "" ]]; then
 	TRAPPER_INTERESTED[${1}_${2}]=${3}
     else
 	TRAPPER_INTERESTED[${1}_${2}]="${TRAPPER_INTERESTED[${1}_${2}]} ${3}"
@@ -49,6 +49,7 @@ function trapper_debug() {
     local -a my_argv
     local interested_function
     local retval=0
+    local ephemeral
 
     if [ ${#FUNCNAME[@]} -ne ${#TRAPPER_FUNCNAME[@]} ]; then
         # our function depth changed...
@@ -60,15 +61,15 @@ function trapper_debug() {
 	    # args are fairly easy.  trap function takes none,
 	    # so we gobble up the first BASH_ARGC[1] elements (in reverse order)...
 	    for ((argv_index=${BASH_ARGC[1]-1} - 1; argv_index >= 0; argv_index--)); do
-		my_argv[${#my_argv[@]}]=${BASH_ARGV[${argv_index}]-}
+		my_argv[${#my_argv[@]}]=${BASH_ARGV[${argv_index}]:-}
 	    done
-	    trapper_log " > Entering ${TRAPPER_FUNCTION} with \"${my_argv[@]-}\""
+	    trapper_log " > Entering ${TRAPPER_FUNCTION} with \"${my_argv[@]:-}\""
 
 	    if [ ${TRAPPER_USE_PREPOST} -ne 0 ]; then
 	        # see if there is a _pre function defined...
 		if $(type ${TRAPPER_FUNCTION}_pre 2>/dev/null | head -n1 | grep -q function); then
 		    trapper_log " > _pre function defined"
-		    eval ${TRAPPER_FUNCTION}_pre "${my_argv[@]-}"
+		    eval ${TRAPPER_FUNCTION}_pre "${my_argv[@]:-}"
 		    if [ ${TRAPPER_OVERRIDES} -ne 0 ]; then
 			retval=$?
 		    fi
@@ -78,10 +79,10 @@ function trapper_debug() {
 		fi
 	    fi
 
-	    for interested_function in ${TRAPPER_INTERESTED[pre_${TRAPPER_FUNCTION}]-}; do
+	    for interested_function in ${TRAPPER_INTERESTED[pre_${TRAPPER_FUNCTION}]:-}; do
 		trapper_log " > calling interested function: ${interested_function}"
-		eval ${interested_function} "${my_argv[@]-}"
-		local ephemeral=$?
+		eval ${interested_function} "${my_argv[@]:-}"
+		ephemeral=$?
 		if [ ${TRAPPER_INTERESTED_OVERRIDES} -ne 0 ]; then
 		    retval=$((ephemeral | $?))
 		fi
@@ -101,9 +102,9 @@ function trapper_debug() {
 		    fi
 		fi
 
-		for interested_function in ${TRAPPER_INTERESTED[post_${TRAPPER_FUNCTION}]-}; do
+		for interested_function in ${TRAPPER_INTERESTED[post_${TRAPPER_FUNCTION}]:-}; do
 		    trapper_log " < calling interested function: ${interested_function}"
-		    eval ${interested_function} "${my_argv[@]-}"
+		    eval ${interested_function} "${my_argv[@]:-}"
 		done
 
 	    done
