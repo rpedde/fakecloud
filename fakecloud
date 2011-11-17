@@ -15,7 +15,10 @@ function usage() {
     echo -e "${prog} [command] [args]\n"
     echo "Valid commands:"
     echo "  create [name] [distrelease]"
-    echo -e "  destroy [name]\n"
+    echo "  destroy [name]"
+    echo "  list"
+    echo "  reboot [name]"
+    echo -e "\n"
     echo "Valid args:"
     echo "  -d           enable debug"
     echo "  -f [flavor]  create instance using flavor"
@@ -75,7 +78,19 @@ case $action in
 	log "Destroying instance named \"${name}\""
 	destroy_instance_by_name $name
 	;;
+    reboot)
+	require 1
+	name=${1}
+
+	log "Stopping instance \"${name}\""
+	virsh destroy ${name}
+	sleep 2
+	log "Starting instance \"${name}\""
+	virsh start ${name}
+	log "Done."
+	;;
     list)
+	require 0
 	log "Defined instances:"
 	instances=$(ls ${BASE_DIR}/instances | sort)
 	virsh_status=$(virsh list --all)
