@@ -22,6 +22,8 @@ function init() {
     BASE_DIR=${BASE_DIR-/var/lib/spin}
     NBD_DEVICE=${NBD_DEVICE-/dev/nbd2} # qemu-nbd is hacky as crap...
     PLUGIN_DIR=${PLUGIN_DIR-$(dirname $0)/plugins}
+    LIB_DIR=${LIB_DIR-$(dirname $0)/lib}
+    EXAMPLE_DIR=${EXAMPLE_DIR-$(dirname $0)/examples}
     POSTINSTALL_DIR=${POSTINSTALL_DIR-$(dirname $0)/post-install}
 
     EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
@@ -366,182 +368,53 @@ EOF
     trap error_exit SIGINT SIGTERM ERR EXIT
 }
 
+
 function maybe_make_dist_image() {
     # $1 - distrelease (ubuntu-natty, etc)
-
-    log_debug "checking for dist image for ${1}"
 
     dist=${1%%-*}
     release=${1##*-}
     arch=amd64
+    tmpdir=$(mktemp -d)
+    trap "deinit; set +e; rm -rf ${tmpdir}; error_exit" SIGINT SIGTERM ERR
+
+    for l in ${LIB_DIR}/os/{default,$dist,$release}; do
+	if [ -f $l ]; then
+	    log_debug "Sourcing $l"
+	    source $l
+	fi
+    done
 
     if [ ! -e ${BASE_DIR}/minibase ]; then
 	mkdir -p ${BASE_DIR}/minibase
     fi
 
-    image_name=${BASE_DIR}/minibase/${1}.tar.gz
-
-    if [ -e ${image_name} ]; then
-	log_debug "Image exists..."
-	return 0
+    log_debug "checking for dist image for ${1}"    
+    log_debug "Using: $(declare -f valid_image)"
+    if ! validate_image ${1}; then
+	log "No valid dist image yet.  Creating."
+	log_debug "Using: $(declare -f make_dist_image)"
+	make_dist_image ${1}
     fi
-
-    tmpdir=$(mktemp -d)
-
-    trap "deinit; set +e; rm -rf ${tmpdir}; error_exit" SIGINT SIGTERM ERR
-
-    log_debug "Creating base image"
-    mkdir ${tmpdir}/mountpoint
-
-    mirror="http://mirror.rackspace.com"
-    if [ "${dist}" == "debian" ]; then
-	mirror="http://ftp.us.debian.org"
-    fi
-
-    log "debootstrapping ${1}"
-
-    case ${dist} in
-	debian|ubuntu)
-	    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
-		${tmpdir}/mountpoint ${mirror}/${dist}
-	    ;;
-	*)
-	    log "Don't know how to build ${1}"
-	    exit 1
-    esac
-
-    # throw in ssh keys
-    if [ "${SSH_KEY-}" != "" ]; then
-	log_debug "Installing ssh keys from ${SSH_KEY}"
-	mkdir -p ${tmpdir}/mountpoint/root/.ssh
-	chmod 700 ${tmpdir}/mountpoint/root/.ssh
-	cat ${SSH_KEY} >> ${tmpdir}/mountpoint/root/.ssh/authorized_keys
-	chmod 600 ${tmpdir}/mountpoint/root/.ssh/authorized_keys
-    fi
-
-    # set root password
-    if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
-	if [ "${ROOT_PASSWORD}" != "" ]; then
-	    chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
-	fi
-    fi
-
-    log "building tarball"
-
-    pushd ${tmpdir}/mountpoint
-    tar -czvf ${image_name} *
-    popd
-
-    rm -rf ${tmpdir}
-
+	
     trap error_exit SIGINT SIGTERM ERR EXIT
 }
-
 
 function maybe_make_default_flavors() {
     # check to see if there is a flavors dir, and populate
     # it if not
+    
     if [ ! -e ${BASE_DIR}/flavors ]; then
-	mkdir -p ${BASE_DIR}/flavors/size
-	mkdir -p ${BASE_DIR}/flavors/template
-	mkdir -p ${BASE_DIR}/flavors/network
+	mkdir -p ${BASE_DIR}/flavors
+	rsync -av $EXAMPLE_DIR/flavors/ ${BASE_DIR}/flavors/
 
-	cat > ${BASE_DIR}/flavors/size/tiny <<"EOF"
-declare -A FLAVOR
-FLAVOR=([disk]="8" [memory]="524288" [vcpu]="1")
-EOF
-
-	cat > ${BASE_DIR}/flavors/size/small <<"EOF"
-declare -A FLAVOR
-FLAVOR=([disk]="12" [memory]="1048576" [vcpu]="1")
-EOF
-
-cat > ${BASE_DIR}/flavors/size/large <<"EOF"
-declare -A FLAVOR
-FLAVOR=([disk]="20" [memory]="1048576" [vcpu]="2")
-EOF
-
+        [ -e ${BASE_DIR}/flavors/network ] || mkdir ${BASE_DIR}/flavors/network
+	#default network flavor will handle this case in future
 	for bridge in $(brctl show | grep -v "bridge name" | cut -f1); do
 	    cat > ${BASE_DIR}/flavors/network/${bridge} <<EOF
 BRIDGE=${bridge}
 EOF
 	done
 
-	# drop a default kvm template...
-	cat > ${BASE_DIR}/flavors/template/kvm <<"EOF"
-<domain type='kvm'>
-  <name>${FLAVOR[name]}</name>
-  <memory>${FLAVOR[memory]}</memory>
-  <currentMemory>${FLAVOR[memory]}</currentMemory>
-  <vcpu>${FLAVOR[vcpu]}</vcpu>
-  <os>
-    <type arch='x86_64' machine='pc-0.12'>hvm</type>
-    <boot dev='hd'/>
-  </os>
-  <features>
-    <acpi/>
-    <apic/>
-    <pae/>
-  </features>
-  <clock offset='utc'/>
-  <on_poweroff>destroy</on_poweroff>
-  <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
-  <devices>
-    <emulator>/usr/bin/kvm</emulator>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='qcow2'/>
-      <source file='${FLAVOR[overlay]}'/>
-      <target dev='vda' bus='virtio'/>
-      <alias name='virtio-disk0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
-    </disk>
-    <disk type='block' device='cdrom'>
-      <driver name='qemu' type='raw'/>
-      <target dev='hdc' bus='ide'/>
-      <readonly/>
-      <alias name='ide0-1-0'/>
-      <address type='drive' controller='0' bus='1' unit='0'/>
-    </disk>
-    <controller type='ide' index='0'>
-      <alias name='ide0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
-    </controller>
-    <interface type='bridge'>
-      <source bridge='${FLAVOR[bridge]}'/>
-      <target dev='vnet0'/>
-      <model type='virtio'/>
-      <alias name='net0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
-    </interface>
-    <serial type='pty'>
-      <target port='0'/>
-      <alias name='serial0'/>
-    </serial>
-    <console type='pty' tty='/dev/pts/1'>
-      <target type='serial' port='0'/>
-      <alias name='serial0'/>
-    </console>
-    <input type='mouse' bus='ps2'/>
-    <graphics type='vnc' autoport='yes'/>
-    <sound model='ac97'>
-      <alias name='sound0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>
-    </sound>
-    <video>
-      <model type='cirrus' vram='9216' heads='1'/>
-n      <alias name='video0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
-    </video>
-    <memballoon model='virtio'>
-      <alias name='balloon0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
-    </memballoon>
-  </devices>
-</domain>
-EOF
-
     fi
 }
-
-
