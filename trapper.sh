@@ -3,6 +3,8 @@
 TRAPPER_FUNCNAME=()
 TRAPPER_DEBUG=${TRAPPER_DEBUG:-0}
 TRAPPER_USE_PREPOST=${TRAPPER_PRE_POST:-1}
+TRAPPER_OVERRIDES=${TRAPPER_OVERRIDES:-1}
+TRAPPER_INTERESTED_OVERRIDES=${TRAPPER_INTERESTED_OVERRIDES:-0}
 
 declare -A TRAPPER_INTERESTED
 
@@ -46,6 +48,7 @@ function trapper_debug() {
     local argv_index
     local -a my_argv
     local interested_function
+    local retval=0
 
     if [ ${#FUNCNAME[@]} -ne ${#TRAPPER_FUNCNAME[@]} ]; then
         # our function depth changed...
@@ -66,13 +69,22 @@ function trapper_debug() {
 		if $(type ${TRAPPER_FUNCTION}_pre 2>/dev/null | head -n1 | grep -q function); then
 		    trapper_log " > _pre function defined"
 		    eval ${TRAPPER_FUNCTION}_pre "${my_argv[@]-}"
+		    if [ ${TRAPPER_OVERRIDES} -ne 0 ]; then
+			retval=$?
+		    fi
+		    trapper_log " : going to return ${retval}"
 		else
 		    trapper_log " > _pre function not defined"
 		fi
 	    fi
 
 	    for interested_function in ${TRAPPER_INTERESTED[pre_${TRAPPER_FUNCTION}]-}; do
+		trapper_log " > calling interested function: ${interested_function}"
 		eval ${interested_function} "${my_argv[@]-}"
+		local ephemeral=$?
+		if [ ${TRAPPER_INTERESTED_OVERRIDES} -ne 0 ]; then
+		    retval=$((ephemeral | $?))
+		fi
 	    done
 	else
 	    # exited a function
@@ -90,6 +102,7 @@ function trapper_debug() {
 		fi
 
 		for interested_function in ${TRAPPER_INTERESTED[post_${TRAPPER_FUNCTION}]-}; do
+		    trapper_log " < calling interested function: ${interested_function}"
 		    eval ${interested_function} "${my_argv[@]-}"
 		done
 
@@ -98,7 +111,7 @@ function trapper_debug() {
 	TRAPPER_FUNCNAME=("${FUNCNAME[@]}")
     fi
 
-    return 0
+    return $retval
 }
 
 trap trapper_debug DEBUG
