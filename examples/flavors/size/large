@@ -1,0 +1,2 @@
+declare -A FLAVOR
+FLAVOR=([disk]="20" [memory]="1048576" [vcpu]="2")
