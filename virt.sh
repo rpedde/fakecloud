@@ -22,6 +22,7 @@ function init() {
     BASE_DIR=${BASE_DIR-/var/lib/spin}
     NBD_DEVICE=${NBD_DEVICE-/dev/nbd2} # qemu-nbd is hacky as crap...
     PLUGIN_DIR=${PLUGIN_DIR-$(dirname $0)/plugins}
+    LIB_DIR=${LIB_DIR-$(dirname $0)/lib}
     EXAMPLE_DIR=${EXAMPLE_DIR-$(dirname $0)/examples}
     POSTINSTALL_DIR=${POSTINSTALL_DIR-$(dirname $0)/post-install}
 
@@ -367,6 +368,7 @@ EOF
     trap error_exit SIGINT SIGTERM ERR EXIT
 }
 
+
 function maybe_make_dist_image() {
     # $1 - distrelease (ubuntu-natty, etc)
 
@@ -391,51 +393,61 @@ function maybe_make_dist_image() {
 
     trap "deinit; set +e; rm -rf ${tmpdir}; error_exit" SIGINT SIGTERM ERR
 
-    log_debug "Creating base image"
-    mkdir ${tmpdir}/mountpoint
-
-    mirror="http://mirror.rackspace.com"
-    if [ "${dist}" == "debian" ]; then
-	mirror="http://ftp.us.debian.org"
-    fi
-
-    log "debootstrapping ${1}"
-
-    case ${dist} in
-	debian|ubuntu)
-	    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
-		${tmpdir}/mountpoint ${mirror}/${dist}
-	    ;;
-	*)
-	    log "Don't know how to build ${1}"
-	    exit 1
-    esac
-
-    # throw in ssh keys
-    if [ "${SSH_KEY-}" != "" ]; then
-	log_debug "Installing ssh keys from ${SSH_KEY}"
-	mkdir -p ${tmpdir}/mountpoint/root/.ssh
-	chmod 700 ${tmpdir}/mountpoint/root/.ssh
-	cat ${SSH_KEY} >> ${tmpdir}/mountpoint/root/.ssh/authorized_keys
-	chmod 600 ${tmpdir}/mountpoint/root/.ssh/authorized_keys
-    fi
-
-    # set root password
-    if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
-	if [ "${ROOT_PASSWORD}" != "" ]; then
-	    chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
+    for l in ${LIB_DIR}/os/{default,$dist,$release}; do
+	log_debug $l
+	if [ -f $l ]; then
+	    log_debug "Sourcing $l"
+	    source $l
 	fi
-    fi
+    done
+    log_debug "Calling make_dist_image: $(declare -f make_dist_image)"
+    make_dist_image $*
 
-    log "building tarball"
+#     log_debug "Creating base image"
+#     mkdir ${tmpdir}/mountpoint
 
-    pushd ${tmpdir}/mountpoint
-    tar -czvf ${image_name} *
-    popd
+#     mirror="http://mirror.rackspace.com"
+#     if [ "${dist}" == "debian" ]; then
+# 	mirror="http://ftp.us.debian.org"
+#     fi
 
-    rm -rf ${tmpdir}
+#     log "debootstrapping ${1}"
 
-    trap error_exit SIGINT SIGTERM ERR EXIT
+#     case ${dist} in
+# 	debian|ubuntu)
+# 	    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
+# 		${tmpdir}/mountpoint ${mirror}/${dist}
+# 	    ;;
+# 	*)
+# 	    log "Don't know how to build ${1}"
+# 	    exit 1
+#     esac
+
+#     # throw in ssh keys
+#     if [ "${SSH_KEY-}" != "" ]; then
+# 	log_debug "Installing ssh keys from ${SSH_KEY}"
+# 	mkdir -p ${tmpdir}/mountpoint/root/.ssh
+# 	chmod 700 ${tmpdir}/mountpoint/root/.ssh
+# 	cat ${SSH_KEY} >> ${tmpdir}/mountpoint/root/.ssh/authorized_keys
+# 	chmod 600 ${tmpdir}/mountpoint/root/.ssh/authorized_keys
+#     fi
+
+#     # set root password
+#     if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
+# 	if [ "${ROOT_PASSWORD}" != "" ]; then
+# 	    chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
+# 	fi
+#     fi
+
+#     log "building tarball"
+
+#     pushd ${tmpdir}/mountpoint
+#     tar -czvf ${image_name} *
+#     popd
+
+#     rm -rf ${tmpdir}
+
+#     trap error_exit SIGINT SIGTERM ERR EXIT
 }
 
 function maybe_make_default_flavors() {
