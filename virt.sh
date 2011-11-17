@@ -372,82 +372,32 @@ EOF
 function maybe_make_dist_image() {
     # $1 - distrelease (ubuntu-natty, etc)
 
-    log_debug "checking for dist image for ${1}"
-
     dist=${1%%-*}
     release=${1##*-}
     arch=amd64
-
-    if [ ! -e ${BASE_DIR}/minibase ]; then
-	mkdir -p ${BASE_DIR}/minibase
-    fi
-
-    image_name=${BASE_DIR}/minibase/${1}.tar.gz
-
-    if [ -e ${image_name} ]; then
-	log_debug "Image exists..."
-	return 0
-    fi
-
     tmpdir=$(mktemp -d)
-
     trap "deinit; set +e; rm -rf ${tmpdir}; error_exit" SIGINT SIGTERM ERR
 
     for l in ${LIB_DIR}/os/{default,$dist,$release}; do
-	log_debug $l
 	if [ -f $l ]; then
 	    log_debug "Sourcing $l"
 	    source $l
 	fi
     done
-    log_debug "Calling make_dist_image: $(declare -f make_dist_image)"
-    make_dist_image $*
 
-#     log_debug "Creating base image"
-#     mkdir ${tmpdir}/mountpoint
+    if [ ! -e ${BASE_DIR}/minibase ]; then
+	mkdir -p ${BASE_DIR}/minibase
+    fi
 
-#     mirror="http://mirror.rackspace.com"
-#     if [ "${dist}" == "debian" ]; then
-# 	mirror="http://ftp.us.debian.org"
-#     fi
-
-#     log "debootstrapping ${1}"
-
-#     case ${dist} in
-# 	debian|ubuntu)
-# 	    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
-# 		${tmpdir}/mountpoint ${mirror}/${dist}
-# 	    ;;
-# 	*)
-# 	    log "Don't know how to build ${1}"
-# 	    exit 1
-#     esac
-
-#     # throw in ssh keys
-#     if [ "${SSH_KEY-}" != "" ]; then
-# 	log_debug "Installing ssh keys from ${SSH_KEY}"
-# 	mkdir -p ${tmpdir}/mountpoint/root/.ssh
-# 	chmod 700 ${tmpdir}/mountpoint/root/.ssh
-# 	cat ${SSH_KEY} >> ${tmpdir}/mountpoint/root/.ssh/authorized_keys
-# 	chmod 600 ${tmpdir}/mountpoint/root/.ssh/authorized_keys
-#     fi
-
-#     # set root password
-#     if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
-# 	if [ "${ROOT_PASSWORD}" != "" ]; then
-# 	    chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
-# 	fi
-#     fi
-
-#     log "building tarball"
-
-#     pushd ${tmpdir}/mountpoint
-#     tar -czvf ${image_name} *
-#     popd
-
-#     rm -rf ${tmpdir}
-
-#     trap error_exit SIGINT SIGTERM ERR EXIT
+    log_debug "checking for dist image for ${1}"    
+    log_debug "Using: $(declare -f valid_image)"
+    if ! validate_image ${1}; then
+	log "No valid dist image yet.  Creating."
+	log_debug "Using: $(declare -f make_dist_image)"
+	make_dist_image ${1}
+    fi
+	
+    trap error_exit SIGINT SIGTERM ERR EXIT
 }
 
 function maybe_make_default_flavors() {
@@ -458,6 +408,7 @@ function maybe_make_default_flavors() {
 	mkdir -p ${BASE_DIR}/flavors
 	rsync -av $EXAMPLE_DIR/flavors/ ${BASE_DIR}/flavors/
 
+        [ -e ${BASE_DIR}/flavors/network ] || mkdir ${BASE_DIR}/flavors/network
 	#default network flavor will handle this case in future
 	for bridge in $(brctl show | grep -v "bridge name" | cut -f1); do
 	    cat > ${BASE_DIR}/flavors/network/${bridge} <<EOF

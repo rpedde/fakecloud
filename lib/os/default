@@ -1,0 +1,78 @@
+function validate_image() {
+    # $1 - distrelease
+    # Warning, currently makes use of parent namespace
+
+    image_name=${BASE_DIR}/minibase/${1}.tar.gz
+
+    if [ -e ${image_name} ]; then
+	log_debug "Image exists..."
+	return 0
+    fi
+    return 1
+}
+
+function make_dist_image() {
+    # $1 - distrelease
+
+    log_debug "Creating base image"
+    mkdir ${tmpdir}/mountpoint
+
+    mirror="http://mirror.rackspace.com"
+    if [ "${dist}" == "debian" ]; then
+	mirror="http://ftp.us.debian.org"
+    fi
+
+    log "debootstrapping ${1}"
+
+    case ${dist} in
+	debian|ubuntu)
+	    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
+		${tmpdir}/mountpoint ${mirror}/${dist}
+	    ;;
+	*)
+	    log "Don't know how to build ${1}"
+	    exit 1
+    esac
+
+    customize_rootfs ${tmpdir}/mountpoint
+
+    log "building tarball"
+
+    pushd ${tmpdir}/mountpoint
+    tar -czvf ${image_name} *
+    popd
+
+    rm -rf ${tmpdir}
+}
+
+function customize_rootfs() {
+    # $1 - path to mounted root to customize
+
+    log "Customizing new root filesystem: $1"
+    customize_keys $1
+    customize_passwd $1
+
+}
+function customize_keys() {
+    # throw in ssh keys
+    # $1 - path to mounted root to customize
+
+    if [ "${SSH_KEY-}" != "" ]; then
+	log_debug "Installing ssh keys from ${SSH_KEY}"
+	mkdir -p ${1}/root/.ssh
+	chmod 700 ${1}/root/.ssh
+	cat ${SSH_KEY} >> ${1}/root/.ssh/authorized_keys
+	chmod 600 ${1}/root/.ssh/authorized_keys
+    fi
+}
+
+function customize_passwd() {
+    # $1 - path to mounted root to customize
+    # set root password
+
+    if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
+	if [ "${ROOT_PASSWORD}" != "" ]; then
+	    chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
+	fi
+    fi
+}
