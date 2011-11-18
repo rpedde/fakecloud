@@ -12,15 +12,12 @@ function validate_image() {
 }
 
 function make_dist_image() {
-    # $1 - distrelease
+    # make dist base image
 
     log_debug "Creating base image"
     mkdir ${tmpdir}/mountpoint
 
-    log "debootstrapping ${1} with mirror $mirror"
-    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
-	${tmpdir}/mountpoint ${mirror}/${dist}
-
+    bootstrap $dist $release $mirror $tmpdir
     customize_rootfs ${tmpdir}/mountpoint
 
     log "building tarball"
@@ -51,6 +48,22 @@ function customize_keys() {
 	cat ${SSH_KEY} >> ${1}/root/.ssh/authorized_keys
 	chmod 600 ${1}/root/.ssh/authorized_keys
     fi
+}
+
+function bootstrap() {
+    # bootstrap debianish distros
+    # $1 - dist
+    # $2 - release
+    # $3 - mirror
+    # $4 - tmpdir
+    local dist=$1
+    local release=$2
+    local mirror=$3
+    local tmpdir=$4
+
+    log "debootstrapping $dist-$release with mirror ${mirror}"
+    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
+	${tmpdir}/mountpoint ${mirror}/${dist}
 }
 
 function customize_passwd() {
