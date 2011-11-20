@@ -1,0 +1,6 @@
+#!/bin/bash
+
+POST_INSTALL=kong
+DEBUG=1
+FLAVOR=small
+DISTRELEASE=ubuntu-natty

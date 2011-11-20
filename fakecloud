@@ -66,9 +66,19 @@ ARGV=("$@")
 
 case $action in
     create)
+	# overload this a bit.  if there is a meta file named ${distrelease},
+	# we'll spin that instead of a bare distrelease
 	require 2
 	name=${1}
 	distrelease=${2}
+
+	if [ -e ${META_DIR}/"${distrelease}" ]; then
+	    source ${META_DIR}/"${distrelease}"
+	    log "Spinning meta instance \"${distrelease}\""
+
+	    distrelease=${DISTRELEASE-ubunut-natty}
+	fi
+
 	log "Spinning instance named \"${name}\" as ${distrelease}"
 	spin_instance ${name} ${FLAVOR-tiny} ${distrelease}
 	;;
