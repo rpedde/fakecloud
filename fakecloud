@@ -76,7 +76,7 @@ case $action in
 	    source ${META_DIR}/"${distrelease}"
 	    log "Spinning meta instance \"${distrelease}\""
 
-	    distrelease=${DISTRELEASE-ubunut-natty}
+	    distrelease=${DISTRELEASE-ubuntu-natty}
 	fi
 
 	log "Spinning instance named \"${name}\" as ${distrelease}"
