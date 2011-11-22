@@ -99,24 +99,35 @@ case $action in
 	virsh start ${name}
 	log "Done."
 	;;
+    stop)
+	require 1
+	log "Stopping ${1}"
+	virsh destroy ${1}
+	;;
+    start)
+	require 1
+	log "Starting ${1}"
+	virsh start ${1}
+	;;
     list)
 	require 0
-	log "Defined instances:"
+	log "Instance state:"
 	instances=$(ls ${BASE_DIR}/instances | sort)
 	virsh_status=$(virsh list --all)
 	count=0
 	for instance in ${instances}; do
 	    count=$(( count + 1 ))
 	    output="  ${instance}: "
-	    if $(echo "${virsh_status}" | grep -q "\- ${instance}"); then
-		output+="DEFINED "
-		if $(echo "${virsh_status}" | grep -q "\- ${instance}" | grep -q "shut off"); then
-		    output+="OFF "
+
+	    if $(echo "${virsh_status}" | grep -q " ${instance} "); then
+		output+="Defined "
+		if $(echo "${virsh_status}" | grep " ${instance} " | grep -q "shut off"); then
+		    output+=" (Powered off) "
 		else
-		    output+="ON "
+		    output+=" (Powered on) "
 		fi
 	    else
-		output+="UNDEFINED"
+		output+="Undefined (Error)"
 	    fi
 	    log "${output}"
 	done
