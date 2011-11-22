@@ -22,6 +22,7 @@ function init() {
     BASE_DIR=${BASE_DIR-/var/lib/spin}
     NBD_DEVICE=${NBD_DEVICE-/dev/nbd2} # qemu-nbd is hacky as crap...
     PLUGIN_DIR=${PLUGIN_DIR-$(dirname $0)/plugins}
+    META_DIR=${META_DIR-$(dirname $0)/meta}
     LIB_DIR=${LIB_DIR-$(dirname $0)/lib}
     EXAMPLE_DIR=${EXAMPLE_DIR-$(dirname $0)/examples}
     POSTINSTALL_DIR=${POSTINSTALL_DIR-$(dirname $0)/post-install}
@@ -377,8 +378,7 @@ function maybe_make_dist_image() {
     arch=amd64
     tmpdir=$(mktemp -d)
     trap "deinit; set +e; rm -rf ${tmpdir}; error_exit" SIGINT SIGTERM ERR
-
-    for l in ${LIB_DIR}/os/{default,$dist,$release}; do
+    for l in ${LIB_DIR}/os/{default,$dist/default,$dist/$release}; do
 	if [ -f $l ]; then
 	    log_debug "Sourcing $l"
 	    source $l
@@ -389,21 +389,21 @@ function maybe_make_dist_image() {
 	mkdir -p ${BASE_DIR}/minibase
     fi
 
-    log_debug "checking for dist image for ${1}"    
+    log_debug "checking for dist image for ${1}"
     log_debug "Using: $(declare -f valid_image)"
     if ! validate_image ${1}; then
 	log "No valid dist image yet.  Creating."
 	log_debug "Using: $(declare -f make_dist_image)"
 	make_dist_image ${1}
     fi
-	
+
     trap error_exit SIGINT SIGTERM ERR EXIT
 }
 
 function maybe_make_default_flavors() {
     # check to see if there is a flavors dir, and populate
     # it if not
-    
+
     if [ ! -e ${BASE_DIR}/flavors ]; then
 	mkdir -p ${BASE_DIR}/flavors
 	rsync -av $EXAMPLE_DIR/flavors/ ${BASE_DIR}/flavors/
