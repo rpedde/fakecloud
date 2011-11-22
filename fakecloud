@@ -108,9 +108,9 @@ case $action in
 	for instance in ${instances}; do
 	    count=$(( count + 1 ))
 	    output="  ${instance}: "
-	    if $(echo "${virsh_status}" | grep -q "${instance}"); then
+	    if $(echo "${virsh_status}" | grep -q "\- ${instance}"); then
 		output+="DEFINED "
-		if $(echo "${virsh_status}" | grep -q "powered off"); then
+		if $(echo "${virsh_status}" | grep -q "\- ${instance}" | grep -q "shut off"); then
 		    output+="OFF "
 		else
 		    output+="ON "
