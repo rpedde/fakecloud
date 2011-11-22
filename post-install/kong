@@ -12,8 +12,18 @@ dist=${distrelease%%-*}
 release=${distrelease##*-}
 tmpdir=$(mktemp -d)
 
+declare -A kong_map
+
+kong_map=(
+    [diablo-final]=master,
+    [diablo-d5]=diablo-d5
+)
+
 [ -e /home/${SUDO_USER}/.ssh/id_dsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_dsa
 [ -e /home/${SUDO_USER}/.ssh/id_rsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_rsa
+
+REPO_URL=${REPO_URL:-http://build.monkeypuppetlabs.com/proposed-packages}
+COMPONENT=${COMPONENT:-diablo-d5}
 
 SSHOPS="-o UserKnownhostsFile=/dev/null -o StrictHostKeyChecking=no"
 if [ "${IDENTITY_FILE-}" != "" ]; then
@@ -45,10 +55,12 @@ case ${distrelease} in
   },
 
 
-  "package_url": "http://build.monkeypuppetlabs.com/proposed-packages",
+  "package_url": "${REPO_URL}",
   "package_release": "${release}",
-  "package_component": "diablo-final",
+  "package_component": "${COMPONENT}",
   "virt_type": "qemu",
+
+  "kong_branch": "${kong_map[${release}]}",
 
   "run_list": [ "recipe[apt]", "recipe[openstack::allinone]", "recipe[kong]" ]
 }
