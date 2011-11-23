@@ -377,7 +377,9 @@ function maybe_make_dist_image() {
     release=${1##*-}
     arch=amd64
     tmpdir=$(mktemp -d)
-    trap "deinit; set +e; rm -rf ${tmpdir}; error_exit" SIGINT SIGTERM ERR
+
+    trap "set +e; rm -rf ${tmpdir}; error_exit" SIGINT SIGTERM ERR
+
     for l in ${LIB_DIR}/os/{default,$dist/default,$dist/$release}; do
 	if [ -f $l ]; then
 	    log_debug "Sourcing $l"
