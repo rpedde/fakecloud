@@ -20,12 +20,14 @@ function init() {
     [ -e ${REAL_HOMEDIR}/.fakecloudrc ] && . ${REAL_HOMEDIR}/.fakecloudrc
 
     BASE_DIR=${BASE_DIR-/var/lib/spin}
+    SHARE_DIR=${SHARE_DIR-$(dirname $0)}
+
     NBD_DEVICE=${NBD_DEVICE-/dev/nbd2} # qemu-nbd is hacky as crap...
-    PLUGIN_DIR=${PLUGIN_DIR-$(dirname $0)/plugins}
-    META_DIR=${META_DIR-$(dirname $0)/meta}
-    LIB_DIR=${LIB_DIR-$(dirname $0)/lib}
-    EXAMPLE_DIR=${EXAMPLE_DIR-$(dirname $0)/examples}
-    POSTINSTALL_DIR=${POSTINSTALL_DIR-$(dirname $0)/post-install}
+    PLUGIN_DIR=${PLUGIN_DIR-${SHARE_DIR}/plugins}
+    META_DIR=${META_DIR-${SHARE_DIR}/meta}
+    LIB_DIR=${LIB_DIR-${SHARE_DIR}/lib}
+    EXAMPLE_DIR=${EXAMPLE_DIR-${SHARE_DIR}/examples}
+    POSTINSTALL_DIR=${POSTINSTALL_DIR-${SHARE_DIR}/post-install}
 
     EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
 
