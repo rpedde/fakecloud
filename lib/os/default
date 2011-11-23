@@ -71,7 +71,7 @@ function customize_passwd() {
     # set root password
 
     if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
-	if [ "${ROOT_PASSWORD}" != "" ]; then
+	if [ "${ROOT_PASSWORD-}" != "" ]; then
 	    chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
 	fi
     fi
