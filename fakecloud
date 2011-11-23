@@ -4,10 +4,57 @@
 
 function require() {
     # $1 how many args required
+    # $2... arg types for each (name|dir|file|anything) (optional)
     if [ ${#ARGV[@]} -ne ${1} ]; then
 	log "ERROR Missing arguments: expecting ${1}, got ${#ARGV[@]}"
 	exec 1>&3
 	usage
+    fi
+
+    if [ ${#@} -gt 1 ]; then
+	myargv=("${ARGV[@]}")
+	shift
+
+	# we have type information
+	count=0
+	success=1
+	for argtype; do
+	    echo "checking \"${myargv[${count}]}\" as \"${1}\""
+	    arg=${myargv[${count}]}
+	    count=$((count + 1))
+
+	    case ${1} in
+		name)
+		    # must be a valid defined machine name
+		    if [ ! -e ${BASE_DIR}/instances/${arg} ]; then
+			log "Argument $((count+1)) (${arg}) must be a valid instance name"
+			success=0
+		    fi
+		    ;;
+		dir)
+		    if [ ! -d ${arg} ]; then
+			log "Argument $((count+1)) (${arg}) must be a valid directory"
+			success=0
+		    fi
+		    ;;
+		file)
+		    if [ ! -e ${arg} ]; then
+			log "Argument $((count+1)) (${arg}) must be a valid file"
+			success=0
+		    fi
+		    ;;
+		*)
+		    # do no validation
+		    ;;
+	    esac
+
+	    shift
+	done
+
+	if [ ${success} -eq 0 ]; then
+	    usage
+	    exit 1
+	fi
     fi
 }
 
@@ -83,13 +130,13 @@ case $action in
 	spin_instance ${name} ${FLAVOR-tiny} ${distrelease}
 	;;
     destroy)
-	require 1
+	require 1 name
 	name=${1}
 	log "Destroying instance named \"${name}\""
 	destroy_instance_by_name $name
 	;;
     reboot)
-	require 1
+	require 1 name
 	name=${1}
 
 	log "Stopping instance \"${name}\""
@@ -100,12 +147,12 @@ case $action in
 	log "Done."
 	;;
     stop)
-	require 1
+	require 1 name
 	log "Stopping ${1}"
 	virsh destroy ${1}
 	;;
     start)
-	require 1
+	require 1 name
 	log "Starting ${1}"
 	virsh start ${1}
 	;;
