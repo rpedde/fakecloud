@@ -395,6 +395,11 @@ EOF
 	sed -i ${working}/mnt/boot/grub/grub.cfg -e 's/quiet/nomodeset vga=0/'
     fi
 
+    # turn off udev persistant stuff
+    if [ -d ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules ]; then
+	rm ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules
+    fi
+
     umount ${working}/mnt/dev
     umount ${working}/mnt
     losetup -d ${part_loop}
