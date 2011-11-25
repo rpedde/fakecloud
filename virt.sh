@@ -11,31 +11,30 @@ function init() {
 	exit 1
     fi
 
-    REAL_USER=${USER-}
-    if [ "${SUDO_USER-}" != "" ]; then
-	REAL_USER=${SUDO_USER}
-    fi
+    REAL_USER=${USER:-}
+    [ ! -z "${SUDO_USER}" ] && REAL_USER=${SUDO_USER}
 
-    REAL_HOMEDIR=${REAL_HOMEDIR-/home/${REAL_USER}}
+    REAL_HOMEDIR=${REAL_HOMEDIR:-/home/${REAL_USER}}
     [ -e ${REAL_HOMEDIR}/.fakecloudrc ] && . ${REAL_HOMEDIR}/.fakecloudrc
 
-    BASE_DIR=${BASE_DIR-/var/lib/spin}
+    BASE_DIR=${BASE_DIR:-/var/lib/spin}
     SHARE_DIR=${SHARE_DIR-$(dirname $0)}
 
-    NBD_DEVICE=${NBD_DEVICE-/dev/nbd2} # qemu-nbd is hacky as crap...
-    PLUGIN_DIR=${PLUGIN_DIR-${SHARE_DIR}/plugins}
-    META_DIR=${META_DIR-${SHARE_DIR}/meta}
-    LIB_DIR=${LIB_DIR-${SHARE_DIR}/lib}
-    EXAMPLE_DIR=${EXAMPLE_DIR-${SHARE_DIR}/examples}
-    POSTINSTALL_DIR=${POSTINSTALL_DIR-${SHARE_DIR}/post-install}
+    NBD_DEVICE=${NBD_DEVICE:-/dev/nbd2} # qemu-nbd is hacky as crap...
+    PLUGIN_DIR=${PLUGIN_DIR:-${SHARE_DIR}/plugins}
+    META_DIR=${META_DIR:-${SHARE_DIR}/meta}
+    LIB_DIR=${LIB_DIR:-${SHARE_DIR}/lib}
+    EXAMPLE_DIR=${EXAMPLE_DIR:-${SHARE_DIR}/examples}
+    POSTINSTALL_DIR=${POSTINSTALL_DIR:-${SHARE_DIR}/post-install}
 
+    # honor null
     EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
 
     LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
-    VIRT_TEMPLATE=${VIRT_TEMPLATE-kvm}
+    VIRT_TEMPLATE=${VIRT_TEMPLATE:-kvm}
 
-    if [ "${SSH_KEY-}" == "" ]; then
-	if [ "${SUDO_USER-}" != "" ]; then
+    if [ -z "${SSH_KEY:-}" ]; then
+	if [ ! -z "${SUDO_USER:-}" ]; then
 	    SSH_KEY=/home/${SUDO_USER}/.ssh/id_*pub
 	else
 	    SSH_KEY=${HOME}/.ssh/id_[rd]sa.pub
@@ -51,7 +50,7 @@ function init() {
     set -e
     set -u
 
-#    log "Initialized with logs to ${LOGFILE}"
+    log_debug "Initialized with logs to ${LOGFILE}"
     trap error_exit SIGINT SIGTERM ERR EXIT
 }
 
@@ -63,13 +62,21 @@ function deinit() {
 
 # any global deinits that must happen
 function error_exit() {
+    local old_error=$?
+
+    log_debug "In error_exit()"
+
     set +x
-    log "Exiting on error.  Logs are in ${LOGFILE}. Excerpt follows:\n\n"
     trap - EXIT
-    tail -n20 ${LOGFILE} >&3
+
+    if [ ${old_error} -ne 0 ]; then
+	log "Exiting on error.  Logs are in ${LOGFILE}. Excerpt follows:\n\n"
+	tail -n20 ${LOGFILE} >&3
+    fi
+
     exec 1>&-
     exec 2>&-
-    exit 1
+    exit ${old_error}
 }
 
 function log() {
@@ -79,20 +86,24 @@ function log() {
 function log_debug {
     if [ "${DEBUG-}" != "" ]; then
 	log "$@"
+    else
+	echo "$@"
     fi
 }
 
 function destroy_instance_by_name() {
     # $1 name
 
-    [ -e "${BASE_DIR}/instances/${1}" ] || return 0
+    local name=${1}
+
+    [ -e "${BASE_DIR}/instances/${name}" ] || return 0
 
     set +e
-    virsh destroy "${1}"
-    virsh undefine "${1}"
+    virsh destroy "${name}"
+    virsh undefine "${name}"
     set -e
 
-    rm -rf "${BASE_DIR}/instances/${1}"
+    rm -rf "${BASE_DIR}/instances/${name}"
 }
 
 
@@ -101,11 +112,27 @@ function spin_instance() {
     # $2 flavor
     # $3 dist-release
 
-    name=${1}
-    flavor=${2}
-    distrelease=${3}
+    local name=${1}
+    local flavor=${2}
+    local distrelease=${3}
+
+    function spin_instance_cleanup() {
+	log_debug "Cleaning up spin_instance()"
+	set +e
+	virsh destroy ${name}
+	virsh undefine ${name}
+	[ -e "${BASE_DIR}/instances/${name}" ] && rm -rf "${BASE_DIR}/instances/${name}"
+	set -e
+	error_exit
+    }
 
     maybe_make_default_flavors
+
+    if [ -e "${BASE_DIR}/instances/${name}" ]; then
+	log "Instance already exists."
+	trap - ERR EXIT
+	exit 1
+    fi
 
     if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
 	log "No instance definition for flavor \"${flavor}\""
@@ -113,24 +140,24 @@ function spin_instance() {
 	exit 1
     fi
 
-    log "Spinning instance of flavor \"${flavor}\""
-    . ${BASE_DIR}/flavors/size/${flavor}
+    trap spin_instance_cleanup ERR EXIT SIGINT SIGTERM
 
-    if [ "${NETWORK_FLAVOR-}" == "" ]; then
-	NETWORK_FLAVOR=$(brctl show | grep -v "bridge name" | cut -f1 | head -n1)
-    fi
+    log "Spinning instance of flavor \"${flavor}\""
+    source ${BASE_DIR}/flavors/size/${flavor}
+
+    [ -z "${NETWORK_FLAVOR:-}" ] && NETWORK_FLAVOR=$(brctl show | grep -v "bridge name" | cut -f1 | head -n1)
 
     if [ ! -e ${BASE_DIR}/flavors/network/${NETWORK_FLAVOR} ]; then
-	BRIDGE=${BRIDGE-br0}
+	BRIDGE=${BRIDGE:-br0}
     else
-	. ${BASE_DIR}/flavors/network/${NETWORK_FLAVOR}
+	source ${BASE_DIR}/flavors/network/${NETWORK_FLAVOR}
     fi
 
     FLAVOR+=([bridge]=${BRIDGE})
 
     make_instance_drive $distrelease ${FLAVOR[disk]} ${name}
-    base_disk=${BASE_DIR}/base/${distrelease}-${FLAVOR[disk]}.qcow2
-    overlay=${BASE_DIR}/instances/${name}/${name}.qcow2
+    local base_disk=${BASE_DIR}/base/${distrelease}-${FLAVOR[disk]}.qcow2
+    local overlay=${BASE_DIR}/instances/${name}/${name}.qcow2
 
     FLAVOR+=([overlay]=${overlay})
     FLAVOR+=([base_disk]=${base_disk})
@@ -221,6 +248,17 @@ function make_instance_drive() {
     # $2 - size in Gb
     # $3 - name
 
+    local distrelease=${1}
+    local size=${2}
+    local name=${3}
+
+    function make_instance_drive_cleanup() {
+	[ -e ${BASE_DIR}/base/${distrelease}-${size}.qcow2 ] && rm "${BASE_DIR}/instances/${name}/${name}.qcow2"
+	exit 1
+    }
+
+    trap make_instance_drive_cleanup ERR EXIT SIGINT SIGTERM
+
     if [ ! -e ${BASE_DIR}/instances ]; then
 	mkdir -p ${BASE_DIR}/instances
     fi
@@ -241,24 +279,27 @@ function make_instance_drive() {
 function expand_dist_to_sized_base() {
     # $1 - dist-release
     # $2 - size in Gb
+
     if [ ! -e ${BASE_DIR}/base ]; then
 	mkdir -p ${BASE_DIR}/base
     fi
 
-    dist=${1%%-*}
-    release=${1##*-}
-    arch=amd64
+    local distrelease=${1}
+    local size=${2}
+    local dist=${distrelease%%-*}
+    local release=${distrelease##*-}
+    local arch=amd64
 
-    basename=${1}-${2}
+    local basename=${distrelease}-${size}
     basepath=${BASE_DIR}/base/${basename}.qcow2
 
-    maybe_make_dist_image $1
+    maybe_make_dist_image ${distrelease}
 
     if [ -e ${basepath} ]; then
 	return 0
     fi
 
-    log "Creating qcow2 image of ${1} (size: ${2}G)"
+    log "Creating qcow2 image of ${distrelease} (size: ${size}G)"
     # otherwise, make the sized base...
     # mountdir=$(mktemp -d)
 
@@ -283,22 +324,20 @@ function expand_dist_to_sized_base() {
 
     working=$(mktemp -d)
 
-    function local_cleanup() {
-	trap - SIGINT SIGTERM ERR EXIT
+    function expand_dist_to_sized_base_cleanup() {
+	echo "cleanup on expand_dist_to_sized_base"
 	set +e
-
 	umount ${working}/mnt/dev
 	umount ${working}/mnt
 	[ "${part_loop-}" != "" ] && losetup -d ${part_loop}
 	[ "${base_loop-}" != "" ] && kpartx -d ${base_loop}
 	[ "${base_loop-}" != "" ] && losetup -d ${base_loop}
-
 	rm -rf ${working}
 	echo ${working}
-	error_exit
+	exit 1
     }
 
-    trap local_cleanup SIGINT SIGTERM ERR EXIT
+    trap expand_dist_to_sized_base SIGINT SIGTERM ERR EXIT
 
     log_debug "Creating raw image..."
     dd if=/dev/zero of=${working}/raw.img bs=1 count=0 seek=${2}G
@@ -410,7 +449,7 @@ function maybe_make_default_flavors() {
 
     if [ ! -e ${BASE_DIR}/flavors ]; then
 	mkdir -p ${BASE_DIR}/flavors
-	rsync -av $EXAMPLE_DIR/flavors/ ${BASE_DIR}/flavors/
+	rsync -av ${EXAMPLE_DIR}/flavors/ ${BASE_DIR}/flavors/
 
         [ -e ${BASE_DIR}/flavors/network ] || mkdir ${BASE_DIR}/flavors/network
 	#default network flavor will handle this case in future
