@@ -396,7 +396,7 @@ EOF
     fi
 
     # turn off udev persistant stuff
-    if [ -d ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules ]; then
+    if [ -e ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules ]; then
 	rm ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules
     fi
 
