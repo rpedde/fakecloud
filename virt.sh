@@ -251,14 +251,12 @@ function make_instance_drive() {
     local size=${2}
     local name=${3}
 
-    DISK_FLAVOR=${DISK_FLAVOR-default}
+    DISK_FLAVOR=${DISK_FLAVOR-qcow}
     source ${LIB_DIR}/disk/default
     source ${LIB_DIR}/disk/${DISK_FLAVOR}
 
     make_bootable_drive ${distrelease} ${size} ${name}
 }
-
-
 
 function maybe_make_dist_image() {
     # $1 - distrelease (ubuntu-natty, etc)
