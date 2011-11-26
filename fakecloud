@@ -90,6 +90,7 @@ while getopts "D:f:dp:h:" option; do
 	    POST_INSTALL=${OPTARG}
 	    ;;
 	d)
+	    NOCLEAN=1
 	    DEBUG=1
 	    ;;
 	D)

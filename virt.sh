@@ -118,6 +118,11 @@ function spin_instance() {
 
     function spin_instance_cleanup() {
 	log_debug "Cleaning up spin_instance()"
+	if [ "${NOCLEAN-0}" -eq 1 ]; then
+	    log_debug "Not cleaning up spun instances"
+	    error_exit 1
+	fi
+
 	set +e
 	virsh destroy ${name}
 	virsh undefine ${name}
