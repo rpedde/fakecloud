@@ -1,0 +1,48 @@
+#!/bin/bash
+
+LVM_DEVICE=${LVM_DEVICE-/dev/vg0}
+
+function make_cow_from_sized_base() {
+    local distrelease=${1}
+    local size=${2}
+    local name=${3}
+
+    log_debug "Making LVM-snapshot cow image"
+
+    lvcreate --name ${name} ${LVM_DEVICE}/${distrelease}-${size} --size ${size}G --snapshot
+    ln -s "${LVM_DEVICE}/${name}" "${BASE_DIR}/instances/${name}/${name}.qcow2"
+}
+
+function make_raw_device() {
+    local distrelease=${1}
+    local size=${2}
+    local name=${3}
+
+
+    lvcreate --name ${distrelease}-${size} ${LVM_DEVICE} --size ${size}G
+    _RETVAL=${LVM_DEVICE}/${distrelease}-${size}
+}
+
+function destroy_raw_device() {
+    local devicename=${1}
+
+    lvremove -y ${devicename}
+}
+
+function finalize_sized_base {
+    local devicename=${1}
+    local destname=${2}
+
+    # nothing to do here...
+}
+
+function have_sized_base {
+    local distrelease=${1}
+    local size=${2}
+
+    if [ -e ${LVM_DEVICE}/${distrelease}-${size} ]; then
+	return 0
+    fi
+
+    return 1
+}

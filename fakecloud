@@ -81,7 +81,7 @@ if [ $# -eq 0 ]; then
     usage
 fi
 
-while getopts "f:dp:h:" option; do
+while getopts "D:f:dp:h:" option; do
     case $option in
 	h)
 	    HINTS=${OPTARG}
@@ -91,6 +91,9 @@ while getopts "f:dp:h:" option; do
 	    ;;
 	d)
 	    DEBUG=1
+	    ;;
+	D)
+	    DISK_FLAVOR=${OPTARG}
 	    ;;
 	f)
 	    FLAVOR=${OPTARG}
