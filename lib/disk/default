@@ -20,7 +20,7 @@ function make_bootable_drive() {
 
     mkdir -p "${BASE_DIR}/instances/${name}"
 
-    if [ -e "${BASE_DIR}/instances/${name}/${name}.qcow2" ]; then
+    if [ -e "${BASE_DIR}/instances/${name}/${name}.disk" ]; then
 	log "Instance already exists... choose another name"
 	trap deinit ERR EXIT
 	exit 1
@@ -45,7 +45,6 @@ function expand_dist_to_sized_base() {
     local arch=amd64
 
     local basename=${distrelease}-${size}
-    basepath=${BASE_DIR}/base/${basename}.qcow2
 
     maybe_make_dist_image ${distrelease}
 
@@ -81,7 +80,6 @@ function expand_dist_to_sized_base() {
 
     function expand_dist_to_sized_base_cleanup() {
 	log_debug "cleaning up expand_dist_to_sized_base()"
-	set +e
 	umount ${working}/mnt/dev
 	umount ${working}/mnt
 	[ "${part_loop-}" != "" ] && losetup -d ${part_loop}
@@ -90,9 +88,10 @@ function expand_dist_to_sized_base() {
 	[ "${rawfile-}" != "" ] && destroy_raw_device ${rawfile}
 	rm -rf ${working}
 	echo ${working}
+	return 1
     }
 
-    trap expand_dist_to_sized_base SIGINT SIGTERM ERR EXIT
+    trap 'expand_dist_to_sized_base; return 1' SIGINT SIGTERM ERR
 
     log_debug "Creating raw image..."
 
@@ -165,8 +164,8 @@ EOF
     kpartx -d ${base_loop}
     losetup -d ${base_loop}
 
-    log "Converting image to qcow2 compressed image"
-    finalize_sized_base ${rawfile} ${BASE_DIR}/base/${basename}.qcow2
+    log "Finalizing sized base image"
+    finalize_sized_base ${rawfile} ${BASE_DIR}/base/${basename}.disk
     rm -rf ${working}
 
     trap error_exit SIGINT SIGTERM ERR EXIT

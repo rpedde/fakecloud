@@ -2,6 +2,11 @@
 
 LVM_DEVICE=${LVM_DEVICE-/dev/vg0}
 
+function get_qemu_type() {
+    # qemu disk driver subtype: raw/qcow2/bochs/qed
+    _RETVAL=raw
+}
+
 function make_cow_from_sized_base() {
     local distrelease=${1}
     local size=${2}
@@ -10,7 +15,7 @@ function make_cow_from_sized_base() {
     log_debug "Making LVM-snapshot cow image"
 
     lvcreate --name ${name} ${LVM_DEVICE}/${distrelease}-${size} --size ${size}G --snapshot
-    ln -s "${LVM_DEVICE}/${name}" "${BASE_DIR}/instances/${name}/${name}.qcow2"
+    ln -s "${LVM_DEVICE}/${name}" "${BASE_DIR}/instances/${name}/${name}.disk"
 }
 
 function make_raw_device() {

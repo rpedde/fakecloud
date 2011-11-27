@@ -1,12 +1,17 @@
 #!/bin/bash
 
+function get_qemu_type() {
+    # qemu disk driver subtype: raw/qcow2/bochs/qed
+    _RETVAL=qcow2
+}
+
 function make_cow_from_sized_base() {
     local distrelease=${1}
     local size=${2}
     local name=${3}
 
     echo "Creating QCOW2 cow image"
-    qemu-img create -f qcow2 -o backing_file=${BASE_DIR}/base/${distrelease}-${size}.qcow2 "${BASE_DIR}/instances/${name}/${name}.qcow2"
+    qemu-img create -f qcow2 -o backing_file=${BASE_DIR}/base/${distrelease}-${size}.qcow2 "${BASE_DIR}/instances/${name}/${name}.disk"
 }
 
 function make_raw_device() {

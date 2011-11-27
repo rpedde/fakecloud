@@ -47,36 +47,31 @@ function init() {
     exec 2>&1
 
     set -x
-    set -e
     set -u
 
     log_debug "Initialized with logs to ${LOGFILE}"
-    trap error_exit SIGINT SIGTERM ERR EXIT
+    trap handle_error SIGINT SIGTERM ERR
+    trap handle_exit EXIT
 }
 
-
-function deinit() {
-    trap - SIGINT SIGTERM ERR EXIT
-    rm ${LOGFILE}
-}
-
-# any global deinits that must happen
-function error_exit() {
-    local old_error=${1-$?}
-
-    log_debug "In error_exit()"
-
+# handle terminating under error
+function handle_error() {
     set +x
-    trap - EXIT
-
-    if [ ${old_error} -ne 0 ]; then
-	log "Exiting on error.  Logs are in ${LOGFILE}. Excerpt follows:\n\n"
-	tail -n20 ${LOGFILE} >&3
-    fi
+    trap - EXIT ERR SIGTERM SIGINT
 
     exec 1>&-
     exec 2>&-
-    exit ${old_error}
+
+    log "Exiting on error.  Logs are in ${LOGFILE}. Excerpt follows:\n\n"
+    tail -n20 ${LOGFILE} >&3
+
+    exit 1
+}
+
+# any global deinits that must happen
+function handle_exit() {
+    rm ${LOGFILE}
+    exit 0
 }
 
 function log() {
@@ -118,17 +113,15 @@ function spin_instance() {
 
     function spin_instance_cleanup() {
 	log_debug "Cleaning up spin_instance()"
+
 	if [ "${NOCLEAN-0}" -eq 1 ]; then
 	    log_debug "Not cleaning up spun instances"
-	    error_exit 1
+	else
+	    virsh destroy ${name}
+	    virsh undefine ${name}
+	    [ -e "${BASE_DIR}/instances/${name}" ] && rm -rf "${BASE_DIR}/instances/${name}"
 	fi
-
-	set +e
-	virsh destroy ${name}
-	virsh undefine ${name}
-	[ -e "${BASE_DIR}/instances/${name}" ] && rm -rf "${BASE_DIR}/instances/${name}"
-	set -e
-	error_exit 1
+	return 1
     }
 
     maybe_make_default_flavors
@@ -145,7 +138,7 @@ function spin_instance() {
 	exit 1
     fi
 
-    trap spin_instance_cleanup ERR EXIT SIGINT SIGTERM
+    trap "spin_instance_cleanup; return 1" ERR SIGINT SIGTERM
 
     log "Spinning instance of flavor \"${flavor}\""
     source ${BASE_DIR}/flavors/size/${flavor}
@@ -161,19 +154,28 @@ function spin_instance() {
     FLAVOR+=([bridge]=${BRIDGE})
 
     make_instance_drive $distrelease ${FLAVOR[disk]} ${name}
-    local base_disk=${BASE_DIR}/base/${distrelease}-${FLAVOR[disk]}.qcow2
-    local overlay=${BASE_DIR}/instances/${name}/${name}.qcow2
+    local disk_image=${BASE_DIR}/instances/${name}/${name}.disk
 
-    FLAVOR+=([overlay]=${overlay})
-    FLAVOR+=([base_disk]=${base_disk})
+    FLAVOR+=([disk_image]=${disk_image})
     FLAVOR+=([name]=$name)
+
+    # get the qemu disk type
+    get_qemu_type
+    FLAVOR+=([disk_type]=$_RETVAL)
 
     log "name:      ${FLAVOR[name]}"
     log "disk size: ${FLAVOR[disk]}G"
+    log "disk type: ${FLAVOR[disk_type]}"
     log "memory:    ${FLAVOR[memory]}"
     log "vcpus:     ${FLAVOR[vcpu]}"
-    log "disk:      ${FLAVOR[overlay]}"
+    log "disk:      ${FLAVOR[disk_image]}"
     log "bridge:    ${FLAVOR[bridge]}"
+
+    # let's drop a descriptor file so we know what disk types, etc
+    rm -f "${BASE_DIR}/instances/${name}/${name}.vars"
+    for var in DISK_FLAVOR NETWORK_FLAVOR BRIDGE distrelease name flavor; do
+	typeset -p ${var} >> "${BASE_DIR}/instances/${name}/${name}.vars"
+    done
 
     # now, we have to generate the template xml...
     eval "echo \"$(< ${BASE_DIR}/flavors/template/${VIRT_TEMPLATE})\"" > ${BASE_DIR}/instances/${name}/${name}.xml
@@ -208,7 +210,7 @@ function spin_instance() {
 	    log "Running post-install script ${POST_INSTALL}..."
 	    if ! ( ${POSTINSTALL_DIR}/${POST_INSTALL} ${name}.local ${distrelease} xx ); then
 		log "Error..."
-		error_exit
+		handle_exit
 	    else
 		log "Success!"
 	    fi
@@ -223,11 +225,22 @@ function run_plugins() {
     # $1 - name
     # $2 - distrelease
 
+    function run_plugins_cleanup() {
+	trap - ERR EXIT
+	log_debug "Cleaning up run_plugins()"
+
+	[ -e ${tmpdir}/mnt ] && umount ${tmpdir}/mnt
+	qemu-nbd -d ${NBD_DEVICE}
+	rm -rf ${tmpdir}
+	return 1
+    }
+    trap 'run_plugins_cleanup; return 1' ERR SIGINT SIGTERM
+
     tmpdir=$(mktemp -d)
     mkdir -p ${tmpdir}/mnt
 
     modprobe nbd
-    qemu-nbd -c $NBD_DEVICE ${BASE_DIR}/instances/${name}/${name}.qcow2
+    qemu-nbd -c $NBD_DEVICE ${BASE_DIR}/instances/${name}/${name}.disk
     sleep 2
     mount ${NBD_DEVICE}p1 ${tmpdir}/mnt
 
@@ -242,6 +255,9 @@ function run_plugins() {
 
     umount ${tmpdir}/mnt
     qemu-nbd -d $NBD_DEVICE
+
+    # wait for qemu-nbd to settle
+    sleep 2
 }
 
 # if there is a disk image already of this size, then
@@ -266,7 +282,7 @@ function maybe_make_dist_image() {
     arch=amd64
     tmpdir=$(mktemp -d)
 
-    trap "set +e; rm -rf ${tmpdir}; error_exit" SIGINT SIGTERM ERR
+    trap "set +e; rm -rf ${tmpdir}; return 1; error_exit; return 1" SIGINT SIGTERM ERR
 
     for l in ${LIB_DIR}/os/{default,$dist/default,$dist/$release}; do
 	if [ -f $l ]; then
@@ -286,8 +302,6 @@ function maybe_make_dist_image() {
 	log_debug "Using: $(declare -f make_dist_image)"
 	make_dist_image ${1}
     fi
-
-    trap error_exit SIGINT SIGTERM ERR EXIT
 }
 
 function maybe_make_default_flavors() {

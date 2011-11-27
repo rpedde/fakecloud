@@ -194,4 +194,3 @@ case $action in
 	;;
 esac
 
-deinit
