@@ -2,6 +2,10 @@
 
 LVM_DEVICE=${LVM_DEVICE-/dev/vg0}
 
+# instead of making sized images with qcow, we'll make sized images
+# with LVM, then when we peel off an instance, we'll do it with
+# a lvm snapshot of the sized lvm device.
+
 function get_qemu_type() {
     # qemu disk driver subtype: raw/qcow2/bochs/qed
     _RETVAL=raw
