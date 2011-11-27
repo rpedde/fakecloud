@@ -1,0 +1,28 @@
+#!/bin/bash
+
+LVM_DEVICE=${LVM_DEVICE-/dev/vg0}
+
+# we're going to use qcow for base images, since they
+# are so small.  To spin up an actual lvm device from that,
+# we'll qemu-convert the sized base to a real lvm device
+
+source ${LIB_DIR}/disk/qcow
+
+function get_qemu_type() {
+    # qemu disk driver subtype: raw/qcow2/bochs/qed
+    _RETVAL=raw
+}
+
+function make_cow_from_sized_base() {
+    local distrelease=${1}
+    local size=${2}
+    local name=${3}
+
+    log_debug "Making LVM raw image"
+
+    lvcreate --name ${name} ${LVM_DEVICE} --size ${size}G
+    ln -s "${LVM_DEVICE}/${name}" "${BASE_DIR}/instances/${name}/${name}.disk"
+
+    qemu-img convert -f qcow2 -O host_device ${BASE_DIR}/base/${distrelease}-${size}.qcow2 "${LVM_DEVICE}/${name}"
+}
+
