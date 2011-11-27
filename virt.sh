@@ -70,8 +70,10 @@ function handle_error() {
 
 # any global deinits that must happen
 function handle_exit() {
+    error=${?-$1}
+    trap - EXIT ERR SIGTERM SIGINT
     rm ${LOGFILE}
-    exit 0
+    exit error
 }
 
 function log() {
