@@ -2,10 +2,13 @@
 
 MAX_BUFFER=1024
 DEBUG=1
+BASE_DIR=/home/rpedde/working/home/virt/api/rackspace-1.0
+TOKEN_DIR=/var/cache/tokens
 
 declare -a request
 declare -A headers
 declare -A request_args
+declare -A response_headers
 declare body
 declare request_method
 declare request_path
@@ -19,6 +22,11 @@ exec 2>&1
 set -u
 set -x
 
+response_headers=(
+    [connection]=close
+    [content-type]="text/plain"
+)
+
 function max() {
     if [ ${1} -gt ${2} ]; then
 	return ${1}
@@ -30,12 +38,16 @@ function start_response() {
     # $1 - error & message ("200 OK")
     # $2 - content-type ("text/plain")
     echo "HTTP/1.0 ${1}" >&3
-    echo "Content-type: ${2}" >&3
-    echo -e "Connection: close\n" >&3
+
+    # jet out the headers
+    for header in ${!response_headers[@]}; do
+	echo "${header}: ${response_headers[${header}]}" >&3
+    done
+    echo >&3
 }
 
 function continue_response() {
-    echo ${1} >&3
+    echo "${@}" >&3
 }
 
 function end_response() {
@@ -46,8 +58,12 @@ function response() {
     # $1 - error & message ("200 OK")
     # $2 - content-type ("text/plain")
     # $3 - body (string)
-    start_response ${1} ${2}
-    continue_reponse ${3}
+    start_response "${1}" "${2}"
+    shift
+    shift
+    if [[ "$@" != "" ]]; then
+	continue_response "$@"
+    fi
     end_response
 }
 
@@ -71,7 +87,7 @@ function error_handler() {
     else
     	echo "Internal Error.  Sorry!" >&3
     fi
-    exit 1
+    exit 0
 }
 
 function exit_handler() {
@@ -97,6 +113,7 @@ while read line; do
 	request=($line)
 
 	if [ ${#request[@]} -ne 3 ]; then
+	    echo ${request}
 	    error_handler
 	fi
 
@@ -143,12 +160,37 @@ if [ ! -z ${headers[content-length]:-} ]; then
 fi
 
 # at this point, we have the request, and perhaps the body
-start_response "200 OK" "text/plain"
-continue_response "${request_path} => ${request_query}"
-continue_response "Got ${#request_args[@]} args"
-for arg in ${!request_args[@]}; do
-    continue_response "${arg} => ${request_args[${arg}]}"
-done
-end_response
+BASE_DIR=$(realpath "${BASE_DIR}")
+if [ ! $(realpath "${BASE_DIR}/${request_path}") ]; then
+    response "404 Not Found" "text/plain" "Cannot find resource"
+    exit 1
+fi
+
+target_path=$(realpath "${BASE_DIR}/${request_path}")
+
+if [ $(echo "${target_path}" | grep -q "^${BASE_DIR}") ]; then
+    response "400 Bad Request" "text/plain" "Bad Path: ${target_path}"
+    exit 1
+fi
+
+if [ -e ${target_path} ]; then
+    if [ -f ${target_path} ]; then
+	source ${target_path}
+    elif [ -d ${target_path} ]; then
+	source ${target_path}/default
+    fi
+
+    if $(type "handle_request" 2>/dev/null | head -n1 | grep -q function); then
+	handle_request
+    fi
+
+    if [ $? -ne 0 ]; then
+	response "500 Internal Server Error" "text/plain" "dispatch failed"
+    fi
+
+    exit 0
+fi
+
+response "404 Not Found" "text/plain" "Resource not found"
 
 
