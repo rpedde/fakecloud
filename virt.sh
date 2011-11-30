@@ -284,7 +284,7 @@ function maybe_make_dist_image() {
     arch=amd64
     tmpdir=$(mktemp -d)
 
-    trap "set +e; rm -rf ${tmpdir}; return 1; error_exit; return 1" SIGINT SIGTERM ERR
+    trap "set +e; rm -rf ${tmpdir}; return 1" SIGINT SIGTERM ERR
 
     for l in ${LIB_DIR}/os/{default,$dist/default,$dist/$release}; do
 	if [ -f $l ]; then
