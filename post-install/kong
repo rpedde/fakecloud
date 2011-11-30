@@ -23,7 +23,7 @@ kong_map=(
 [ -e /home/${SUDO_USER}/.ssh/id_rsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_rsa
 
 REPO_URL=${REPO_URL:-http://build.monkeypuppetlabs.com/proposed-packages}
-COMPONENT=${COMPONENT:-diablo-d5}
+COMPONENT=${COMPONENT:-diablo-final}
 
 SSHOPS="-o UserKnownhostsFile=/dev/null -o StrictHostKeyChecking=no"
 if [ "${IDENTITY_FILE-}" != "" ]; then

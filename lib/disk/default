@@ -165,10 +165,8 @@ EOF
     losetup -d ${base_loop}
 
     log "Finalizing sized base image"
-    finalize_sized_base ${rawfile} ${BASE_DIR}/base/${basename}.disk
+    finalize_sized_base ${rawfile} ${BASE_DIR}/base/${basename}.qcow2
     rm -rf ${working}
-
-    trap error_exit SIGINT SIGTERM ERR EXIT
 }
 
 
