@@ -2,11 +2,11 @@
 
 MAX_BUFFER=1024
 DEBUG=1
-BASE_DIR=/home/rpedde/working/home/virt/api/rackspace-1.0
+BASE_DIR=${BASE_DIR:-$(dirname $0)/rackspace-1.0}
 TOKEN_DIR=/var/cache/tokens
 
 declare -a request
-declare -A headers
+declare -A request_headers
 declare -A request_args
 declare -A response_headers
 declare body
@@ -21,6 +21,7 @@ exec 2>&1
 
 set -u
 set -x
+shopt -q -s extglob
 
 response_headers=(
     [connection]=close
@@ -144,18 +145,20 @@ while read line; do
 	    break;
 	fi
 
-	header_value=${line##*:}
+	header_value=${line#*:}
 	header_name=${line%%:*}
 
-	headers[${header_name,,}]=${header_value}
+	header_value="${header_value#+([[:space:]])}"
+	header_value="${header_value%+([$'\r'$'\n'])}"
+	request_headers[${header_name,,}]="${header_value}"
     fi
 done
 
 body=""
 
 # see if there is a content-length
-if [ ! -z ${headers[content-length]:-} ]; then
-    max_read=max ${headers[content-length]} MAX_BUFFER
+if [ ! -z ${request_headers[content-length]:-} ]; then
+    max_read=max ${request_headers[content-length]} MAX_BUFFER
     read -n ${max_read} body
 fi
 
