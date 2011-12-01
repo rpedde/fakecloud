@@ -100,6 +100,14 @@ function destroy_instance_by_name() {
     virsh undefine "${name}"
     set -e
 
+    # destroy the disk
+    if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
+	source "${BASE_DIR}/instances/${name}/${name}.vars"
+	source "${LIB_DIR}/disk/default"
+	source "${LIB_DIR}/disk/${DISK_FLAVOR}"
+	destroy_instance_disk "${name}"
+    fi
+
     rm -rf "${BASE_DIR}/instances/${name}"
 }
 

@@ -8,6 +8,11 @@ LVM_DEVICE=${LVM_DEVICE-/dev/vg0}
 
 source ${LIB_DIR}/disk/qcow
 
+function destroy_instance_disk() {
+    # $1 - name
+    lvremove -f "${LVM_DEVICE}/${1}"
+}
+
 function get_qemu_type() {
     # qemu disk driver subtype: raw/qcow2/bochs/qed
     _RETVAL=raw

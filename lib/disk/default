@@ -1,5 +1,14 @@
 #!/bin/bash
 
+
+function destroy_instance_disk() {
+    # $1 - name
+    #
+    # this no-ops, as removing the instance dir
+    # will remove most types of disks
+    return 0
+}
+
 # see if there is a disk image already of this size, if so
 # qcow it, otherwise make a new one and qcow *that*
 #

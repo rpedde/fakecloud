@@ -6,6 +6,11 @@ LVM_DEVICE=${LVM_DEVICE-/dev/vg0}
 # with LVM, then when we peel off an instance, we'll do it with
 # a lvm snapshot of the sized lvm device.
 
+function destroy_instance_disk() {
+    # $1 - name
+    lvremove -f "${LVM_DEVICE}/${1}"
+}
+
 function get_qemu_type() {
     # qemu disk driver subtype: raw/qcow2/bochs/qed
     _RETVAL=raw
