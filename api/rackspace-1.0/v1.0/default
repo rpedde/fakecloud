@@ -3,13 +3,16 @@
 function handle_request() {
     mkdir -p ${TOKEN_DIR}
 
-    if [[ ${headers[x-auth-user]:-} == "" ]] || [[ ${headers[x-auth-key]:-} = "" ]]; then
+    if [[ ${request_headers[x-auth-user]:-} == "" ]] || \
+	[[ ${request_headers[x-auth-key]:-} = "" ]]; then
 	response "400 Bad Request" "text/plain" "Expecting x-auth-user and x-auth-key"
     fi
 
-
+    ENDPOINT=${request_headers[host]:-}
+    ENDPOINT=${ENDPOINT:-10.253.1.253}
 
     response_headers[x-auth-token]="howdy"
+    response_headers[x-server-management-url]="http://${ENDPOINT}/servers"
     response "204 No Content" "text/plain"
     exit 0
 }
