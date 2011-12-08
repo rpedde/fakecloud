@@ -180,7 +180,11 @@ if [ -e ${target_path} ]; then
     if [ -f ${target_path} ]; then
 	source ${target_path}
     elif [ -d ${target_path} ]; then
-	source ${target_path}/default
+	if [ -e ${target_path}/default ]; then
+	    source ${target_path}/default
+	else
+	    response "404 Not Found" "text/plain" "Bad Path: ${target_path}"
+	fi
     fi
 
     if $(type "handle_request" 2>/dev/null | head -n1 | grep -q function); then
