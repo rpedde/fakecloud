@@ -171,8 +171,8 @@ fi
 
 target_path=$(realpath "${BASE_DIR}/${request_path}")
 
-if [ $(echo "${target_path}" | grep -q "^${BASE_DIR}") ]; then
-    response "400 Bad Request" "text/plain" "Bad Path: ${target_path}"
+if (! echo "${target_path}" | grep -q "^${BASE_DIR}"); then
+    response "400 Bad Request" "text/plain" "$(echo ${target_path} | hexdump -C)"
     exit 1
 fi
 
@@ -183,7 +183,7 @@ if [ -e ${target_path} ]; then
 	if [ -e ${target_path}/default ]; then
 	    source ${target_path}/default
 	else
-	    response "404 Not Found" "text/plain" "Bad Path: ${target_path}"
+	    response "404 Not Found" "text/plain" "Bad Path"
 	fi
     fi
 
