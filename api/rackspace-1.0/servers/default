@@ -1,0 +1,10 @@
+#!/bin/bash
+
+function handle_request() {
+    start_response "200 OK" "text/plain"
+    continue_response "$(echo ${post_info[@]})"
+    end_response
+}
+
+
+

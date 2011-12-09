@@ -9,6 +9,7 @@ declare -a request
 declare -A request_headers
 declare -A request_args
 declare -A response_headers
+declare -a post_info
 declare body
 declare request_method
 declare request_path
@@ -163,40 +164,44 @@ if [ ! -z ${request_headers[content-length]:-} ]; then
 fi
 
 # at this point, we have the request, and perhaps the body
-BASE_DIR=$(realpath "${BASE_DIR}")
-if [ ! $(realpath "${BASE_DIR}/${request_path}") ]; then
-    response "404 Not Found" "text/plain" "Cannot find resource"
+BASE_DIR=$(readlink -f "${BASE_DIR}")
+if ( readlink -f "${BASE_DIR}/${request_path}"); then
+    target_path=$(readlink -f "${BASE_DIR}/${request_path}")
+else
+    response "404 Not Found" "text/plain" "Bad Path"
     exit 1
 fi
 
-target_path=$(realpath "${BASE_DIR}/${request_path}")
+d=${target_path}
+post_info=()
 
-if (! echo "${target_path}" | grep -q "^${BASE_DIR}"); then
-    response "400 Bad Request" "text/plain" "$(echo ${target_path} | hexdump -C)"
-    exit 1
-fi
-
-if [ -e ${target_path} ]; then
-    if [ -f ${target_path} ]; then
-	source ${target_path}
-    elif [ -d ${target_path} ]; then
-	if [ -e ${target_path}/default ]; then
-	    source ${target_path}/default
-	else
-	    response "404 Not Found" "text/plain" "Bad Path"
-	fi
+while ( /bin/true ); do
+    if (! echo "${target_path}" | grep -q "^${BASE_DIR}"); then
+	response "400 Bad Request" "text/plain" "Bad Path"
+	exit 1
     fi
 
-    if $(type "handle_request" 2>/dev/null | head -n1 | grep -q function); then
-	handle_request
+    if [ -f ${d} ]; then
+	source ${d}
+	break;
+    elif [ -f ${d}/default ]; then
+	source ${d}/default
+	break;
+    else
+	post_info[${#post_info[@]}]=$(basename ${d})
+	d=$(dirname ${d})
     fi
+done
 
+if $(type "handle_request" 2>/dev/null | head -n1 | grep -q function); then
+    handle_request
     if [ $? -ne 0 ]; then
 	response "500 Internal Server Error" "text/plain" "dispatch failed"
     fi
 
     exit 0
 fi
+
 
 response "404 Not Found" "text/plain" "Resource not found"
 
