@@ -1,5 +1,6 @@
 #!/bin/bash
 
+_RETVAL=""
 
 # $1 - distrelease (ubuntu-natty, debian-squeeze, etc)
 # $2 - disk size (in gb)
@@ -306,7 +307,7 @@ function maybe_make_dist_image() {
     fi
 
     log_debug "checking for dist image for ${1}"
-    log_debug "Using: $(declare -f valid_image)"
+    log_debug "Using: $(declare -f validate_image)"
     if ! validate_image ${1}; then
 	log "No valid dist image yet.  Creating."
 	log_debug "Using: $(declare -f make_dist_image)"

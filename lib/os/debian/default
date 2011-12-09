@@ -1,1 +1,10 @@
+# -*- mode: shell-script -*-
+
+function valid_images() {
+    _RETVAL=""
+    for release in squeeze etch; do
+	_RETVAL+="debian-${release} "
+    done
+}
+
 export mirror="http://ftp.us.debian.org"

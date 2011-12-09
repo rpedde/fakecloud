@@ -1,0 +1,11 @@
+# -*- mode: shell-script -*-
+
+function valid_images() {
+    _RETVAL=""
+
+    for d in ${META_DIR}/*; do
+	if [ -f ${d} ]; then
+	    _RETVAL+="$(basename ${d}) "
+	fi
+    done
+}

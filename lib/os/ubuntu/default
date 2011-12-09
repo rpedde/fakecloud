@@ -1,1 +1,10 @@
+# -*- mode: shell-script -*-
+
+function valid_images() {
+    _RETVAL=""
+    for release in maverick natty oneiric; do
+	_RETVAL+="ubuntu-${release} "
+    done
+}
+
 mirror="http://mirror.rackspace.com"

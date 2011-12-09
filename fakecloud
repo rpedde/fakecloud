@@ -188,6 +188,35 @@ case $action in
 	fi
 	;;
 
+    image)
+	image_action=${1}
+	shift
+	unset ARGV[0]
+	# ARGV=("${ARGV[@]}")
+
+	case ${image_action} in
+	    list)
+		require 0
+
+		image_list=""
+		for f in $(find ${LIB_DIR}/os -type f); do
+		    source $f
+		    valid_images
+		    image_list+="${_RETVAL} "
+		done
+
+		log "Images:"
+		for image in ${image_list}; do
+		    log "  ${image}"
+		done
+		;;
+	    *)
+		log "Unknown image command: ${2}"
+		usage
+		;;
+	esac
+	;;
+
     *)
 	log "Unknown command: ${action}"
 	usage

@@ -1,3 +1,10 @@
+# -*- mode: shell-script -*-
+
+function valid_images() {
+    _RETVAL=""
+}
+
+
 function validate_image() {
     # $1 - distrelease
     # Warning, currently makes use of parent namespace
