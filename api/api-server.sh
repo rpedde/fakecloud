@@ -1,9 +1,15 @@
 #!/bin/bash
 
+[ -e /etc/fakecloud/api.conf ] && source /etc/fakecloud/api.conf
+
 MAX_BUFFER=1024
 DEBUG=1
-BASE_DIR=${BASE_DIR:-$(dirname $0)/rackspace-1.0}
-TOKEN_DIR=/var/cache/tokens
+BASE_DIR=${BASE_DIR-$(dirname $0)/rackspace-1.0}
+TOKEN_DIR=${TOKEN_DIR-/var/cache/tokens}
+MAP_DIR=${MAP_DIR-/tmp/fakecloud-api}
+SHARE_DIR=${SHARE_DIR-$(dirname $0)/..}
+LIB_DIR=${LIB_DIR:-${SHARE_DIR}/lib}
+META_DIR=${META_DIR:-${SHARE_DIR}/meta}
 
 declare -a request
 declare -A request_headers
@@ -14,6 +20,11 @@ declare body
 declare request_method
 declare request_path
 declare request_query
+
+declare -A SM_CURRENT_BY_KEY
+declare -A SM_CURRENT_BY_VALUE
+
+
 
 LOGFILE=$(mktemp)
 exec 3>&1
@@ -38,7 +49,6 @@ function max() {
 
 function start_response() {
     # $1 - error & message ("200 OK")
-    # $2 - content-type ("text/plain")
     echo "HTTP/1.0 ${1}" >&3
 
     # jet out the headers
@@ -105,6 +115,94 @@ function exit_handler() {
     exec 3>&-
     exit 0
 }
+
+# static map functions.  Terribly inefficient
+function sm_lookup_by_key() {
+    # $1 - descriptor
+    # $2 - int to return string for
+
+    local descriptor=${1}
+    local key=${2}
+
+    sm_load ${descriptor}
+
+    # if we don't have a key match, return nothing
+    _RETVAL=${SM_CURRENT_BY_KEY[${key}]-UNKNOWN}
+}
+
+function sm_lookup_by_value() {
+    # $1 - descriptor
+    # $2 - string to return int for
+
+    local descriptor=${1}
+    local value=${2}
+    local key
+
+
+    sm_load ${descriptor}
+
+    # if we don't have a value match, assign it and save
+    if [ "${SM_CURRENT_BY_VALUE[${value}]-}" == "" ]; then
+	key=${SM_CURRENT_MAX}
+	SM_CURRENT_MAX=$(( SM_CURRENT_MAX + 1 ))
+	SM_CURRENT_BY_KEY[${key}]=${value}
+	SM_CURRENT_BY_VALUE[${value}]=${key}
+	sm_save
+    fi
+
+    _RETVAL=${SM_CURRENT_BY_VALUE[${value}]}
+}
+
+function sm_save() {
+    local tmpfile=${MAP_DIR}/${SM_CURRENT_DESCRIPTOR}-new.conf
+    local mapfile=${MAP_DIR}/${SM_CURRENT_DESCRIPTOR}.conf
+    local key
+
+    mkdir -p ${MAP_DIR}
+
+    rm ${tmpfile}
+
+    for key in ${!SM_CURRENT_BY_KEY[@]}; do
+	echo "${key}:${SM_CURRENT_BY_KEY[${key}]}" >> ${tmpfile}
+    done
+
+    mv ${tmpfile} ${mapfile}
+}
+
+function sm_load() {
+    # $1 - descriptor (images/instances, etc)
+    local descriptor=$1
+    local key
+    local value
+    local line
+
+    # load a key/value table into well-known globals
+    if [ "${SM_CURRENT_DESCRIPTOR-}" == "${descriptor}" ]; then
+	return 0
+    fi
+
+    # otherwise, load the table
+    SM_CURRENT_MAX=1
+    SM_CURRENT_DESCRIPTOR=${descriptor}
+    SM_CURRENT_BY_KEY=()
+    SM_CURRENT_BY_VALUE=()
+
+    if [ -e ${MAP_DIR}/${descriptor}.conf ]; then
+	while read line; do
+	    key=${line%:*}
+	    value=${line##*:}
+
+	    SM_CURRENT_BY_KEY[${key}]=${value}
+	    SM_CURRENT_BY_VALUE[${value}]=${key}
+
+	    if (( key > SM_CURRENT_MAX )); then
+		SM_CURRENT_MAX=${key}
+	    fi
+	done < <(cat ${MAP_DIR}/${descriptor}.conf)
+	SM_CURRENT_MAX=$(( SM_CURRENT_MAX + 1 ))
+    fi
+}
+
 
 trap error_handler ERR SIGINT SIGTERM
 trap exit_handler EXIT
@@ -204,5 +302,4 @@ fi
 
 
 response "404 Not Found" "text/plain" "Resource not found"
-
 

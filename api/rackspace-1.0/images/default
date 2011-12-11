@@ -1,0 +1,66 @@
+#!/bin/bash
+
+function image_detail() {
+    # $1 - image name (not id)
+    sm_lookup_by_value "images" ${1}
+
+    image_id=${_RETVAL}
+    image_name=${1}
+    image_status="ACTIVE"
+    image_created=$(date "+%Y-%m-%dT%H:%M:%S%z")
+    image_updated=${image_created}
+
+    _RETVAL="{"
+    for val in name status created updated; do
+	_RETVAL+="\"${val}\": "
+	_RETVAL+="\"$(eval echo "\"\$image_${val}\"")\""
+	_RETVAL+=", "
+    done
+
+    _RETVAL+="\"id\": ${image_id}}"
+}
+
+function handle_request() {
+    local response=""
+
+    if [ ${#post_info[@]} -eq 0 ]; then
+	# all flavors
+	image_list=""
+	for f in $(find ${LIB_DIR}/os -type f); do
+	    source $f
+	    valid_images
+	    image_list+=${_RETVAL}
+	done
+
+	response="{ \"images\": ["
+
+	local first_image=1
+	for image in $image_list; do
+	    image_detail ${image}
+	    if [ ${first_image} -ne 1 ]; then
+		response+=","
+	    fi
+	    first_image=0
+	    response+=${_RETVAL}
+	done
+
+	response+="]}"
+    else
+	# single_flavor
+	sm_lookup_by_key "images" ${post_info[0]}
+
+	if [ "$_RETVAL" == "UNKNOWN" ]; then
+	    response "404 Not Found" "text/plain" "Not a valid image id"
+	fi
+
+	response="{ \"image\":"
+	image_detail ${_RETVAL}
+	response+=${_RETVAL}
+	response+="]}"
+    fi
+
+    response_headers[content-type]="application/json"
+    start_response "200 OK"
+    continue_response ${response}
+    end_response
+}

@@ -1,6 +1,14 @@
 #!/bin/bash
 
 function handle_request() {
+    local response=""
+
+    if [ ${#post_info[@]} -eq 0 ]; then
+	# it's a full request
+    else
+	# request for single server
+    fi
+
     start_response "200 OK" "text/plain"
     continue_response "$(echo ${post_info[@]})"
     end_response
