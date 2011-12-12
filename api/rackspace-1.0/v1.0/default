@@ -12,7 +12,7 @@ function handle_request() {
     ENDPOINT=${ENDPOINT:-10.253.1.253}
 
     response_headers[x-auth-token]="howdy"
-    response_headers[x-server-management-url]="http://${ENDPOINT}/servers"
+    response_headers[x-server-management-url]="http://${ENDPOINT}"
     response "204 No Content" "text/plain"
     exit 0
 }

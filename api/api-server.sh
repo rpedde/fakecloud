@@ -24,8 +24,6 @@ declare request_query
 declare -A SM_CURRENT_BY_KEY
 declare -A SM_CURRENT_BY_VALUE
 
-
-
 LOGFILE=$(mktemp)
 exec 3>&1
 exec >${LOGFILE}
@@ -228,6 +226,7 @@ while read line; do
 	    request_query=${full_path##*\?}
 	fi
 
+	echo "$(date "+%Y-%m-%d %H:%M:%S") ${request_path}" >> /var/log/api-server.log
 	declare -a kvpairs=()
 
 	if [ ${#request_query} -gt 0 ]; then

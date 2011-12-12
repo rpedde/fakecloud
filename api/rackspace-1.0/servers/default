@@ -1,18 +1,61 @@
 #!/bin/bash
 
+function server_detail() {
+    # $1 - server name (not id)
+    sm_lookup_by_value "servers" ${1}
+
+    server_id=${_RETVAL}
+    server_name=${1}
+    server_status="ACTIVE"
+    server_hostId=$(hostname)
+    server_flavorId=1
+    server_imageId=1
+
+    _RETVAL="{"
+    for val in name status hostId flavorId imageId; do
+	_RETVAL+="\"${val}\": "
+	_RETVAL+="\"$(eval echo "\"\$server_${val}\"")\""
+	_RETVAL+=", "
+    done
+    _RETVAL+="\"id\": ${server_id}, \"addresses\": {\"public\": [ \"1.1.1.1\" ], \"private\": [ \"2.2.2.2\" ] }}"
+}
+
 function handle_request() {
     local response=""
 
     if [ ${#post_info[@]} -eq 0 ]; then
-	# it's a full request
+	# all instances
+	server_list=$(ls /var/lib/spin/instances)
+
+	response="{ \"servers\": ["
+
+	local first_image=1
+	for server in $server_list; do
+	    server_detail ${server}
+	    if [ ${first_image} -ne 1 ]; then
+		response+=","
+	    fi
+	    first_image=0
+	    response+=${_RETVAL}
+	done
+
+	response+="]}"
     else
-	# request for single server
+	# single_flavor
+	sm_lookup_by_key "servers" ${post_info[0]}
+
+	if [ "$_RETVAL" == "UNKNOWN" ]; then
+	    response "404 Not Found" "text/plain" "Not a valid server id"
+	fi
+
+	response="{ \"server\":"
+	image_detail ${_RETVAL}
+	response+=${_RETVAL}
+	response+="]}"
     fi
 
-    start_response "200 OK" "text/plain"
-    continue_response "$(echo ${post_info[@]})"
+    response_headers[content-type]="application/json"
+    start_response "200 OK"
+    continue_response ${response}
     end_response
 }
-
-
-
