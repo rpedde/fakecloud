@@ -273,7 +273,7 @@ d=${target_path}
 post_info=()
 
 while ( /bin/true ); do
-    if (! echo "${target_path}" | grep -q "^${BASE_DIR}"); then
+    if (! echo "${d}" | grep -q "^${BASE_DIR}"); then
 	response "400 Bad Request" "text/plain" "Bad Path"
 	exit 1
     fi
