@@ -6,41 +6,9 @@ _RETVAL=""
 # $2 - disk size (in gb)
 
 function init() {
-    # set up globals, read from config file, potentially
-    if [ "${USER-}" != "root" ]; then
-	echo "Must be running as root (try sudo)."
-	exit 1
-    fi
+    . $(dirname $(readlink -f $0))/lib.sh
 
-    REAL_USER=${USER:-}
-    [ ! -z "${SUDO_USER}" ] && REAL_USER=${SUDO_USER}
-
-    REAL_HOMEDIR=${REAL_HOMEDIR:-/home/${REAL_USER}}
-    [ -e ${REAL_HOMEDIR}/.fakecloudrc ] && . ${REAL_HOMEDIR}/.fakecloudrc
-
-    BASE_DIR=${BASE_DIR:-/var/lib/spin}
-    SHARE_DIR=${SHARE_DIR-$(dirname $0)}
-
-    NBD_DEVICE=${NBD_DEVICE:-/dev/nbd2} # qemu-nbd is hacky as crap...
-    PLUGIN_DIR=${PLUGIN_DIR:-${SHARE_DIR}/plugins}
-    META_DIR=${META_DIR:-${SHARE_DIR}/meta}
-    LIB_DIR=${LIB_DIR:-${SHARE_DIR}/lib}
-    EXAMPLE_DIR=${EXAMPLE_DIR:-${SHARE_DIR}/examples}
-    POSTINSTALL_DIR=${POSTINSTALL_DIR:-${SHARE_DIR}/post-install}
-
-    # honor null
-    EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
-
-    LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
-    VIRT_TEMPLATE=${VIRT_TEMPLATE:-kvm}
-
-    if [ -z "${SSH_KEY:-}" ]; then
-	if [ ! -z "${SUDO_USER:-}" ]; then
-	    SSH_KEY=/home/${SUDO_USER}/.ssh/id_*pub
-	else
-	    SSH_KEY=${HOME}/.ssh/id_[rd]sa.pub
-	fi
-    fi
+    init_vars
 
     # fix up logging
     exec 3>&1
