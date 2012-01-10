@@ -81,6 +81,8 @@ if [ $# -eq 0 ]; then
     usage
 fi
 
+init
+
 while getopts "D:f:dp:h:H:" option; do
     case $option in
 	h)
@@ -109,8 +111,6 @@ while getopts "D:f:dp:h:H:" option; do
 done
 
 shift $(($OPTIND - 1))
-
-init
 
 # get positional arguments
 action=${1}
