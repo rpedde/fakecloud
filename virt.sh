@@ -122,7 +122,7 @@ function handle_error() {
 function handle_exit() {
     error=${?-$1}
     trap - EXIT ERR SIGTERM SIGINT
-    rm ${LOGFILE}
+#    rm ${LOGFILE}
 
     update_status "SUCCESS" "100" "Build complete"
     exit error
@@ -330,9 +330,15 @@ function run_plugins() {
     done
 
     umount ${tmpdir}/mnt
-    [ use_kpartx -eq 1 ] && kpartx -d ${NBD_DEVICE}
+    if [ $use_kpartx -eq 1 ]; then
+        kpartx -d ${NBD_DEVICE}
+    fi
+
     qemu-nbd -d $NBD_DEVICE
-    [ -e /dev/mapper/$(basename ${NBD_DEVICE})p1 ] && dmsetup remove /dev/mapper/$(basename ${NBD_DEVICE})p1
+
+    if [ -e /dev/mapper/$(basename ${NBD_DEVICE})p1 ]; then
+        dmsetup remove /dev/mapper/$(basename ${NBD_DEVICE})p1
+    fi
 }
 
 # if there is a disk image already of this size, then
