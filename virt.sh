@@ -125,7 +125,7 @@ function handle_exit() {
 #    rm ${LOGFILE}
 
     update_status "SUCCESS" "100" "Build complete"
-    exit error
+    exit $error
 }
 
 function log() {
