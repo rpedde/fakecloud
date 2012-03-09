@@ -7,4 +7,4 @@ function valid_images() {
     done
 }
 
-mirror="http://mirror.rackspace.com"
+mirror=${UBUNTU_MIRROR:-http://mirror.rackspace.com}
