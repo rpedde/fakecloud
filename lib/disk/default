@@ -100,7 +100,7 @@ function expand_dist_to_sized_base() {
 	return 1
     }
 
-    trap 'expand_dist_to_sized_base; return 1' SIGINT SIGTERM ERR
+    trap 'expand_dist_to_sized_base_cleanup; return 1' SIGINT SIGTERM ERR
 
     log_debug "Creating raw image..."
 
