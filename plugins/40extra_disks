@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+#TODO: probably should get fakecloud dir and make extra_disks if it doesn't exist
+base_disk_dir="/var/lib/spin/extra_disks"
+disk_dir=${base_disk_dir}/$name
+extra_disks=${EXTRA_DISKS:-0}
+extra_disk_size=${EXTRA_DISK_SIZE:-1G}
+
+#would not be hard to modify echo statement to spit out more drive letters
+if [ $extra_disks -gt 0 ] && [ $extra_disks -lt 700 ]; then
+    if [ ! -e $disk_dir ]; then
+        mkdir $disk_dir
+    fi
+
+    #TODO: use disk flavors?
+    if [ -d $disk_dir ]; then
+        for i in $(seq $extra_disks); do
+            l=$(echo {{b..z},{a..z}{a..z}} | cut -d ' ' -f$i) #gimme the drive letter
+            f=${disk_dir}/vd${l}
+            if [ ! -e $f ]; then
+                qemu-img create -f qcow2 $f $extra_disk_size
+            fi
+            virsh attach-disk $name $f  vd${l} --driver qemu --subdriver qcow2 --persistent
+        done
+    fi
+fi
+
+

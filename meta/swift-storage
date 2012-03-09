@@ -1,0 +1,6 @@
+#!/bin/bash
+POST_INSTALL=swift-storage
+DEBUG=1
+FLAVOR=small
+DISTRELEASE=ubuntu-precise
+export EXTRA_DISKS=4

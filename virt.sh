@@ -2,10 +2,63 @@
 
 _RETVAL=""
 
-# $1 - distrelease (ubuntu-natty, debian-squeeze, etc)
-# $2 - disk size (in gb)
-
 function init() {
+    # $1 - job file (if using a job file)
+    if [ "${1-}" != "" ]; then
+	JOBFILE=${1-}
+	local basefile="$(dirname ${JOBFILE})/$(basename ${JOBFILE})"
+	LOGFILE="${basefile}.log"
+	STATUSFILE="${basefile}.status"
+	COMPLETEFILE="${basefile}.complete"
+    else
+	LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
+    fi
+
+    init_vars
+    init_logs
+
+    set -x
+    set -u
+
+    trap handle_error SIGINT SIGTERM ERR
+    trap handle_exit EXIT
+
+    update_status "PENDING" "0" "Initializing"
+}
+
+# set a status state, percent complete, and user message
+# valid states:
+# SUCCESS - complete, successful
+# FAILURE - complete, unsuccessful
+# PENDING - job not yet started (pending pickup, maybe?)
+# EXECUTE - job running
+
+function update_status() {
+    # $1 - state
+    # $2 - percent
+    # $3 - message
+
+    if [ "${JOBFILE-}" != "" ]; then
+	echo -e "STATE=${1}\nPERCENT=${2}\nMESSAGE=${3}" > ${STATUSFILE}
+	# this status file should be posted to upstream
+	# controller, if the job was initially obtained from
+	# an upstream controller
+    fi
+}
+
+# set up logging
+function init_logs() {
+    # fix up logging
+    exec 3>&1
+    exec >${LOGFILE}
+    exec 2>&1
+
+    log_debug "Initialized with logs to ${LOGFILE}"
+}
+
+# Set up environmental variables and paths
+# to locations.
+function init_vars() {
     # set up globals, read from config file, potentially
     if [ "${USER-}" != "root" ]; then
 	echo "Must be running as root (try sudo)."
@@ -15,6 +68,9 @@ function init() {
     REAL_USER=${USER:-}
     [ ! -z "${SUDO_USER}" ] && REAL_USER=${SUDO_USER}
 
+    [ -e /etc/fakecloud/fakecloud.conf ] && . /etc/fakecloud/fakecloud.conf
+
+    # FIXME: getent, not /home/$USER - this is wrong somewhere else too
     REAL_HOMEDIR=${REAL_HOMEDIR:-/home/${REAL_USER}}
     [ -e ${REAL_HOMEDIR}/.fakecloudrc ] && . ${REAL_HOMEDIR}/.fakecloudrc
 
@@ -23,15 +79,18 @@ function init() {
 
     NBD_DEVICE=${NBD_DEVICE:-/dev/nbd2} # qemu-nbd is hacky as crap...
     PLUGIN_DIR=${PLUGIN_DIR:-${SHARE_DIR}/plugins}
-    META_DIR=${META_DIR:-${SHARE_DIR}/meta}
     LIB_DIR=${LIB_DIR:-${SHARE_DIR}/lib}
     EXAMPLE_DIR=${EXAMPLE_DIR:-${SHARE_DIR}/examples}
+
+    # should these be user specific?
+    META_DIR=${META_DIR:-${SHARE_DIR}/meta}
     POSTINSTALL_DIR=${POSTINSTALL_DIR:-${SHARE_DIR}/post-install}
+
+    EVENT_DIR=${EVENT_DIR:-${SHARE_DIR}/events}
 
     # honor null
     EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
 
-    LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
     VIRT_TEMPLATE=${VIRT_TEMPLATE:-kvm}
 
     if [ -z "${SSH_KEY:-}" ]; then
@@ -41,18 +100,6 @@ function init() {
 	    SSH_KEY=${HOME}/.ssh/id_[rd]sa.pub
 	fi
     fi
-
-    # fix up logging
-    exec 3>&1
-    exec >${LOGFILE}
-    exec 2>&1
-
-    set -x
-    set -u
-
-    log_debug "Initialized with logs to ${LOGFILE}"
-    trap handle_error SIGINT SIGTERM ERR
-    trap handle_exit EXIT
 }
 
 # handle terminating under error
@@ -62,6 +109,8 @@ function handle_error() {
 
     exec 1>&-
     exec 2>&-
+
+    update_status "ERROR" "100" "Exited on error"
 
     log "Exiting on error.  Logs are in ${LOGFILE}. Excerpt follows:\n\n"
     tail -n20 ${LOGFILE} >&3
@@ -73,8 +122,10 @@ function handle_error() {
 function handle_exit() {
     error=${?-$1}
     trap - EXIT ERR SIGTERM SIGINT
-    rm ${LOGFILE}
-    exit error
+#    rm ${LOGFILE}
+
+    update_status "SUCCESS" "100" "Build complete"
+    exit $error
 }
 
 function log() {
@@ -94,12 +145,10 @@ function destroy_instance_by_name() {
 
     local name=${1}
 
-    [ -e "${BASE_DIR}/instances/${name}" ] || return 0
-
-    set +e
+    set -e
     virsh destroy "${name}"
     virsh undefine "${name}"
-    set -e
+    set +e
 
     # destroy the disk
     if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
@@ -139,13 +188,11 @@ function spin_instance() {
 
     if [ -e "${BASE_DIR}/instances/${name}" ]; then
 	log "Instance already exists."
-	trap - ERR EXIT
 	exit 1
     fi
 
     if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
 	log "No instance definition for flavor \"${flavor}\""
-	trap - ERR EXIT
 	exit 1
     fi
 
@@ -235,13 +282,15 @@ function spin_instance() {
 function run_plugins() {
     # $1 - name
     # $2 - distrelease
+    local use_kpartx=0
 
     function run_plugins_cleanup() {
-	trap - ERR EXIT
 	log_debug "Cleaning up run_plugins()"
 
 	[ -e ${tmpdir}/mnt ] && umount ${tmpdir}/mnt
+	[ $use_kpartx -eq 1 ] && kpartx -d ${NBD_DEVICE}
 	qemu-nbd -d ${NBD_DEVICE}
+	[ -e /dev/mapper/$(basename ${NBD_DEVICE})p1 ] && dmsetup remove /dev/mapper/$(basename ${NBD_DEVICE})p1
 	rm -rf ${tmpdir}
 	return 1
     }
@@ -253,7 +302,18 @@ function run_plugins() {
     modprobe nbd
     qemu-nbd -c $NBD_DEVICE ${BASE_DIR}/instances/${name}/${name}.disk
     sleep 2
-    mount ${NBD_DEVICE}p1 ${tmpdir}/mnt
+
+    if [ ! -e ${NBD_DEVICE}p1 ]; then
+	kpartx -a ${NBD_DEVICE}
+	use_kpartx=1
+    fi
+
+    if [ -e ${NBD_DEVICE}p1 ]; then
+	mount ${NBD_DEVICE}p1 ${tmpdir}/mnt
+    else
+	# we'll fail and unmap if this doesn't exist
+	mount /dev/mapper/$(basename ${NBD_DEVICE})p1 ${tmpdir}/mnt
+    fi
 
     for plugin in $(ls ${PLUGIN_DIR} | sort); do
 	log_debug "Running plugin \"${plugin}\"..."
@@ -265,10 +325,15 @@ function run_plugins() {
     done
 
     umount ${tmpdir}/mnt
+    if [ $use_kpartx -eq 1 ]; then
+        kpartx -d ${NBD_DEVICE}
+    fi
+
     qemu-nbd -d $NBD_DEVICE
 
-    # wait for qemu-nbd to settle
-    sleep 2
+    if [ -e /dev/mapper/$(basename ${NBD_DEVICE})p1 ]; then
+        dmsetup remove /dev/mapper/$(basename ${NBD_DEVICE})p1
+    fi
 }
 
 # if there is a disk image already of this size, then
@@ -333,3 +398,51 @@ EOF
 
     fi
 }
+
+# files need to be in a format like this:
+# Basically, just a transcription of fakecloud command line
+#
+# --< cut >--
+# ACTION=create
+# NAME=servername
+# DISTRELEASE=ubuntu-natty
+# ... other metavars
+# --< cut >--
+function dispatch_file() {
+    # $1 - file
+    file=${1}
+
+    JOB_FILE=${file}
+
+    if [ ! -e ${file} ]; then
+	return 0
+    fi
+
+    source ${file}
+    dispatch_job
+}
+
+function dispatch_job() {
+    case $ACTION in
+	create)
+	    spin_instance ${NAME} ${FLAVOR-tiny} ${DISTRELEASE}
+	    ;;
+	destroy)
+	    destroy_instance_by_name $NAME
+	    ;;
+	reboot)
+	    virsh destroy ${NAME}
+	    virsh start ${NAME}
+	    ;;
+	stop)
+	    virsh destroy ${NAME}
+	    ;;
+	start)
+	    virsh start ${NAME}
+	    ;;
+	*)
+	    log "Bad command ${ACTION}"
+	    ;;
+    esac
+}
+

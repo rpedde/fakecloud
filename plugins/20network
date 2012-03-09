@@ -50,8 +50,8 @@ EOF
 	;;
 esac
 
-if [ -e ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules ]; then
-    rm ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules
+if [ -e ${mnt}/etc/udev/rules.d/70-persistent-net.rules ]; then
+    rm ${mnt}/etc/udev/rules.d/70-persistent-net.rules
 fi
 
 

@@ -83,7 +83,7 @@ fi
 
 init
 
-while getopts "D:f:dp:h:" option; do
+while getopts "D:f:dp:h:H:" option; do
     case $option in
 	h)
 	    HINTS=${OPTARG}
@@ -97,6 +97,9 @@ while getopts "D:f:dp:h:" option; do
 	    ;;
 	D)
 	    DISK_FLAVOR=${OPTARG}
+	    ;;
+	H)
+	    HOST=${OPTARG}
 	    ;;
 	f)
 	    FLAVOR=${OPTARG}
@@ -116,6 +119,10 @@ shift
 ARGV=("$@")
 
 case $action in
+    submit)
+	require 1 file
+	dispatch_file ${1}
+	;;
     create)
 	# overload this a bit.  if there is a meta file named ${distrelease},
 	# we'll spin that instead of a bare distrelease
