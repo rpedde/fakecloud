@@ -145,10 +145,11 @@ function destroy_instance_by_name() {
 
     local name=${1}
 
-    set -e
+    local old_options=$(set +o)
+    set +e
     virsh destroy "${name}"
     virsh undefine "${name}"
-    set +e
+    eval "$old_options" 2> /dev/null
 
     # destroy the disk
     if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
