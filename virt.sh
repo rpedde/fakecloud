@@ -145,12 +145,10 @@ function destroy_instance_by_name() {
 
     local name=${1}
 
-    [ -e "${BASE_DIR}/instances/${name}" ] || return 0
-
-    set +e
+    set -e
     virsh destroy "${name}"
     virsh undefine "${name}"
-    set -e
+    set +e
 
     # destroy the disk
     if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
@@ -190,13 +188,11 @@ function spin_instance() {
 
     if [ -e "${BASE_DIR}/instances/${name}" ]; then
 	log "Instance already exists."
-	trap - ERR EXIT
 	exit 1
     fi
 
     if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
 	log "No instance definition for flavor \"${flavor}\""
-	trap - ERR EXIT
 	exit 1
     fi
 
@@ -289,7 +285,6 @@ function run_plugins() {
     local use_kpartx=0
 
     function run_plugins_cleanup() {
-	trap - ERR EXIT
 	log_debug "Cleaning up run_plugins()"
 
 	[ -e ${tmpdir}/mnt ] && umount ${tmpdir}/mnt
