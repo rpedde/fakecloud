@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+dist=${distrelease%%-*}
+release=${distrelease##*-}
+
+case ${dist} in
+    ubuntu)
+        chroot ${mnt} locale-gen en_US.UTF-8
+	;;
+    debian)
+	chroot ${mnt} apt-get install -y locales-all
+	;;
+    *)
+	echo "Can't do that, boss"
+	;;
+esac
+
+

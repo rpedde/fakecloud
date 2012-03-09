@@ -3,5 +3,6 @@
 POST_INSTALL=kong
 DEBUG=1
 FLAVOR=small
-DISTRELEASE=ubuntu-natty
+DISTRELEASE=ubuntu-oneiric
 COMPONENT=diablo-final
+REPO_URL=http://build.monkeypuppetlabs.com/proposed-packages
