@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 function destroy_instance_disk() {
     # $1 - name
     #
@@ -135,6 +134,12 @@ function expand_dist_to_sized_base() {
 	grub_package="grub2 grub-common"
     fi
 
+    # oneiric.  pft.
+    cp /etc/resolv.conf ${working}/mnt/etc/resolv.conf
+
+    log_debug "Yet another apt-get update..."
+    chroot ${working}/mnt /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get update -y --force-yes"
+
     if [ "${EXTRA_PACKAGES-}" != "" ]; then
 	packages=${EXTRA_PACKAGES//,/ }
 	log_debug "Installing extra packages..."
@@ -176,6 +181,8 @@ EOF
     log "Finalizing sized base image"
     finalize_sized_base ${rawfile} ${BASE_DIR}/base/${basename}.qcow2
     rm -rf ${working}
+
+    return 0
 }
 
 
