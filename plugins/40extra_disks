@@ -16,8 +16,9 @@ extra_disk_size=${EXTRA_DISK_SIZE:-1G}
 
 #would not be hard to modify echo statement to spit out more drive letters
 if [ $extra_disks -gt 0 ] && [ $extra_disks -lt 700 ]; then
+    echo "Building extra disks... " >&3
     if [ ! -e $disk_dir ]; then
-        mkdir $disk_dir
+        mkdir -p $disk_dir
     fi
 
     #TODO: use disk flavors?
@@ -31,6 +32,8 @@ if [ $extra_disks -gt 0 ] && [ $extra_disks -lt 700 ]; then
             virsh attach-disk $name $f  vd${l} --driver qemu --subdriver qcow2 --persistent
         done
     fi
+else
+    echo "Not making disks..." >&3
 fi
 
 

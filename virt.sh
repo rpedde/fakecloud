@@ -145,10 +145,11 @@ function destroy_instance_by_name() {
 
     local name=${1}
 
-    set -e
+    local old_options=$(set +o)
+    set +e
     virsh destroy "${name}"
     virsh undefine "${name}"
-    set +e
+    eval "$old_options" 2> /dev/null
 
     # destroy the disk
     if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
@@ -358,7 +359,12 @@ function maybe_make_dist_image() {
     arch=amd64
     tmpdir=$(mktemp -d)
 
-    trap "set +e; rm -rf ${tmpdir}; return 1" SIGINT SIGTERM ERR
+    function maybe_make_dist_image_cleanup() {
+	rm -rf ${tmpdir}
+	return 1
+    }
+
+    trap "maybe_make_dist_image_cleanup; return 1" SIGINT SIGTERM ERR
 
     for l in ${LIB_DIR}/os/{default,$dist/default,$dist/$release}; do
 	if [ -f $l ]; then

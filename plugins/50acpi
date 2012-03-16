@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+dist=${distrelease%%-*}
+release=${distrelease##*-}
+
+case ${dist} in
+    ubuntu|debian)
+        chroot ${mnt} apt-get install -y acpid
+	;;
+    *)
+	echo "Can't do that, boss"
+	;;
+esac
+
+

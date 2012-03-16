@@ -15,6 +15,7 @@ tmpdir=$(mktemp -d)
 declare -A kong_map
 
 kong_map=(
+    [essex-e3]=master,
     [diablo-final]=master,
     [diablo-d5]=diablo-d5
 )

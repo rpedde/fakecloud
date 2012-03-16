@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 function destroy_instance_disk() {
     # $1 - name
     #
@@ -100,7 +99,7 @@ function expand_dist_to_sized_base() {
 	return 1
     }
 
-    trap 'expand_dist_to_sized_base; return 1' SIGINT SIGTERM ERR
+    trap 'expand_dist_to_sized_base_cleanup; return 1' SIGINT SIGTERM ERR
 
     log_debug "Creating raw image..."
 
@@ -134,6 +133,12 @@ function expand_dist_to_sized_base() {
 	package=linux-image-${arch}
 	grub_package="grub2 grub-common"
     fi
+
+    # oneiric.  pft.
+    cp /etc/resolv.conf ${working}/mnt/etc/resolv.conf
+
+    log_debug "Yet another apt-get update..."
+    chroot ${working}/mnt /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get update -y --force-yes"
 
     if [ "${EXTRA_PACKAGES-}" != "" ]; then
 	packages=${EXTRA_PACKAGES//,/ }
@@ -176,6 +181,8 @@ EOF
     log "Finalizing sized base image"
     finalize_sized_base ${rawfile} ${BASE_DIR}/base/${basename}.qcow2
     rm -rf ${working}
+
+    return 0
 }
 
 

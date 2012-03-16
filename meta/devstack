@@ -1,0 +1,6 @@
+#!/bin/bash
+
+POST_INSTALL=devstack
+DEBUG=1
+FLAVOR=small
+DISTRELEASE=ubuntu-oneiric

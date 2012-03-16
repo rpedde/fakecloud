@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# $1 - ip (assumes passwordless ssh)
+# $2 - distrelease
+# $3 - hints
+
+ip=${1}
+distrelease=${2}
+hints=${3}
+
+dist=${distrelease%%-*}
+release=${distrelease##*-}
+tmpdir=$(mktemp -d)
+
+[ -e /home/${SUDO_USER}/.ssh/id_dsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_dsa
+[ -e /home/${SUDO_USER}/.ssh/id_rsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_rsa
+
+SSHOPS="-o UserKnownhostsFile=/dev/null -o StrictHostKeyChecking=no"
+if [ "${IDENTITY_FILE-}" != "" ]; then
+    SSHOPS+=" -i${IDENTITY_FILE}"
+fi
+
+case ${distrelease} in
+    ubuntu*)
+	ssh ${SSHOPS} root@{ip} DEBIAN_FRONTEND=noninteractive apt-get install git
+	ssh ${SSHOPS} root@{ip} cd /opt && git clone https://github.com/openstack-dev/devstack
+	;;
+
+    *)
+	echo "Can't do, boss."
+	;;
+esac
+
