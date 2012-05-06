@@ -1,0 +1,93 @@
+# -*- mode: shell-script -*-
+
+# this include defaults for rhel-ish operating sytems.  It tries to be
+# universal between rhel/cent/fedora
+
+EXTRA_PACKAGES=${RHELISH_EXTRA_PACKAGES:-sudo openssh-server}
+
+function get_mirror() {
+    # $1 - dist
+    # $2 - release
+
+    local dist=$1
+    local release=$2
+    local reltype
+
+    reltype=release
+
+    if [ "${dist}" == "fedora" ] && [ "${release}" == 17 ]; then
+	reltype=development
+    fi
+
+    _RETVAL=${FEDORA_MIRROR:-http://mirror.rackspace.com/${dist}/${reltype}/${release}/x86_64/os}
+}
+
+# stuff we need to do before grubbing.
+function pre_grub() {
+    # $1 - dist
+    # $2 - release
+    # $3 - mountpoint
+
+    local dist=$1
+    local release=$2
+    local mountpoint=$3
+
+    # we'll want to set up yum repos.  get the dist-specific
+    # functions, including get_mirror
+    source ${LIB_DIR}/os/${dist}/default
+    if [ -e ${LIB_DIR}/os/${dist}/${release} ]; then
+	source ${LIB_DIR}/os/${dist}/${release}
+    fi
+
+    get_mirror ${dist} ${release}
+    local mirror=$_RETVAL
+
+    # remove the old yum configs... they are likely bork
+    mkdir -p ${mountpoint}/etc/yum.repos.d/old
+    mv ${mountpoint}/etc/yum.repos.d/*repo ${mountpoint}/etc/yum.repos.d/old
+    cat > ${mountpoint}/etc/yum.repos.d/${dist}-${release}.repo <<EOF
+[${dist}-${release}]
+name=${dist}-${release}
+failovermethod=priority
+baseurl=${mirror}
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-${dist}-x86_64
+EOF
+
+    if [ -e ${mountpoint}/etc/selinux/config ]; then
+	sed -i ${mountpoint}/etc/selinux/config -e "s/SELINUX.*/SELINUX=disabled/"
+    fi
+
+    # FIXME: this is probably fedora > 17 specific
+    local kernels=$(ls ${mountpoint}/boot/vmlinu* | head -n1)
+    local kernelver=${kernels#*-}
+
+    # not sure when dracut came around...
+    chroot ${mountpoint} dracut /boot/initramfs-${kernelver}.img ${kernelver}
+    return 0
+}
+
+function post_grub() {
+    # $1 - dist
+    # $2 - release
+    # $3 - mountpoint
+
+    local dist=$1
+    local release=$2
+    local mountpoint=$3
+
+    chroot ${mountpoint} /bin/bash -c "yum install -y openssh-server avahi"
+
+    for d in avahi-daemon.service sshd.service NetworkManager.service rsyslog.service; do
+	chroot ${mountpoint} /bin/bash -c "systemctl enable ${d}"
+    done
+
+    for d in {0..6}; do
+	if [ ! -e ${mountpoint}/etc/systemd/system/getty.target.wants/getty\@tty${d}.service ]; then
+	    ln -s "/usr/lib/systemd/system/getty\@.service" ${mountpoint}/etc/systemd/system/getty.target.wants/getty\@tty${d}.service
+	fi
+    done
+
+    return 0
+}

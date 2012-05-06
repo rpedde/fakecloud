@@ -5,6 +5,14 @@ function valid_images() {
 }
 
 
+function get_mirror() {
+    # $1 dist
+    # $2 release
+
+    _RETVAL="http://localhost"
+}
+
+
 function validate_image() {
     # $1 - distrelease
     # Warning, currently makes use of parent namespace
@@ -83,3 +91,80 @@ function customize_passwd() {
 	fi
     fi
 }
+
+function pre_grub() {
+    # $1 - dist
+    # $2 - release
+    # $3 - mountpoint
+
+    # here we would do anything we need to do before running grub.
+    # this might include setting up package repositories, installing
+    # initial distro-specific packages (beyond EXTRA_PACKAGES)
+    true
+}
+
+function post_grub() {
+    # $1 - dist
+    # $2 - release
+    # $3 - mountpoint
+
+    # here we would do anything we need to do before running grub.
+    # this might include setting up package repositories, installing
+    # initial distro-specific packages (beyond EXTRA_PACKAGES)
+    true
+}
+
+# we'll do debian and rhel here, can override in os specifics if necessary
+function get_install_package_command() {
+    # $1 dist
+    # $2 release
+    # $3 packagelist
+
+    local dist=$1
+    local release=$2
+    local packagelist=$3
+
+    local command
+
+    case ${dist} in
+	debian|ubuntu)
+	    command="DEBIAN_FRONTEND=noninteractive apt-get install ${packagelist} -y --force-yes"
+	    ;;
+	redhat|centos|fedora)
+	    command="yum -y install ${packagelist}"
+	    ;;
+	*)
+	    trap deinit ERR EXIT
+	    exit 1
+    esac
+
+    _RETVAL=${command}
+}
+
+function get_update_packagelist_command() {
+    # $1 dist
+    # $2 release
+
+    local dist=$1
+    local release=$2
+
+    local command
+
+    case ${dist} in
+	debian|ubuntu)
+	    command="apt-get update -y --force-yes"
+	    ;;
+	redhat|centos|fedora)
+	    command="true"
+	    ;;
+	*)
+	    echo "unknown dist"
+	    return 1
+    esac
+
+    _RETVAL=${command}
+}
+
+
+
+

@@ -13,6 +13,12 @@ case ${distrelease} in
 	echo "Setting hostname..."
 	echo ${name} > ${mnt}/etc/hostname
 	;;
+    fedora*|centos*|rhel*)
+	echo "Setting hostname..."
+	if [ -e ${mnt}/etc/sysconfig/network ]; then
+	    sed -i ${mnt}/etc/sysconfig/network -e "s/HOSTNAME=.*/HOSTNAME=${name}/"
+	fi
+	;;
     *)
 	echo "Skipping hostname.  Unknown distrelease"
 	;;

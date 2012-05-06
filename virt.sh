@@ -11,7 +11,7 @@ function init() {
 	STATUSFILE="${basefile}.status"
 	COMPLETEFILE="${basefile}.complete"
     else
-	LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
+	LOGFILE=/tmp/fakecloud.log
     fi
 
     init_vars
@@ -89,7 +89,7 @@ function init_vars() {
     EVENT_DIR=${EVENT_DIR:-${SHARE_DIR}/events}
 
     # honor null
-    EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
+    # EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
 
     VIRT_TEMPLATE=${VIRT_TEMPLATE:-kvm}
 
@@ -318,7 +318,7 @@ function run_plugins() {
 
     for plugin in $(ls ${PLUGIN_DIR} | sort); do
 	log_debug "Running plugin \"${plugin}\"..."
-	if ! ( ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt" ); then
+	if ! ( /bin/bash -x ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt" > /tmp/plugins.log 2>&1 ); then
 	    log_debug "Plugin \"${plugin}\": failure"
 	else
 	    log_debug "Plugin \"${plugin}\": success"
