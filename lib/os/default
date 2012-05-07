@@ -32,6 +32,10 @@ function make_dist_image() {
     log_debug "Creating base image"
     mkdir ${tmpdir}/mountpoint
 
+    get_mirror ${dist} ${release}
+    local mirror=${_RETVAL}
+
+    # FIXME: dist and release should be passed
     bootstrap $dist $release $mirror $tmpdir
     customize_rootfs ${tmpdir}/mountpoint
 
@@ -78,7 +82,7 @@ function bootstrap() {
 
     log "debootstrapping $dist-$release with mirror ${mirror}"
     debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
-	${tmpdir}/mountpoint ${mirror}/${dist}
+	${tmpdir}/mountpoint ${mirror}
 }
 
 function customize_passwd() {

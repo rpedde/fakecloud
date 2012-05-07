@@ -186,12 +186,12 @@ EOF
     local mkinstall=/usr/sbin/grub-install
     local grubdir=/boot/grub
 
-    if [ ! -e ${working}/${mkconfig} ]; then
+    if [ ! -e ${working}/mnt/${mkconfig} ]; then
 	mkconfig=/usr/sbin/grub2-mkconfig # fedora, others..
 	grubdir=/boot/grub2
     fi
 
-    if [ ! -e ${working}/${mkinstall} ]; then
+    if [ ! -e ${working}/mnt/${mkinstall} ]; then
 	mkinstall=/usr/sbin/grub2-install # fedora, others..
     fi
 
