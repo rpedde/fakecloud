@@ -195,20 +195,23 @@ EOF
     chroot ${working}/mnt ${mkconfig} -o ${grubdir}/grub.cfg
 
     # is this crazy? WARNING!
-    if [ "${dist}" == "fedora" ]; then
+    if [[ "fedora-17 debian-wheezy" =~ "${dist}-${release}" ]]; then
 	# this seems mildly dangerous, and possibly screwing up grub in the guest.  Seems to work.  ish.
 	# if only grub2 didn't suck so badly.  maybe syslinux?
 
         # since we're grubbing from the external system, match up the grub stuff
 	# with the exernal system's grub.
-        cp ${working}/mnt/${grubdir}/grub.cfg ${working}/mnt/boot/grub/grub.cfg
-	grubdir=/boot/grub
+	if [ "${grubdir}" != /boot/grub ]; then
+            cp ${working}/mnt/${grubdir}/grub.cfg ${working}/mnt/boot/grub/grub.cfg
+	    grubdir=/boot/grub
+	fi
 
 	if [ ! /usr/sbin/grub-probe --device-map=${working}/mnt/boot/grub/device.map --target=fs -v ${working}/mnt/boot/grub ]; then
 	    log "grub-probe failed... this might be bad"
 	fi
 
 	/usr/sbin/grub-install --no-floppy --grub-mkdevicemap=${working}/mnt/boot/grub/device.map --root-directory=${working}/mnt ${base_loop}
+
     else
 	chroot ${working}/mnt ${mkinstall} --no-floppy --grub-mkdevicemap=/boot/grub/device.map --root-directory=/ ${base_loop}
     fi
@@ -221,6 +224,14 @@ EOF
 	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/rhgb//'
 	# fedora wants to mount root fs read only... strange...
 	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/ ro / rw /'
+
+	# grub seems to lately be aware of loopback devices.  We might do better just to completely rewrite the grub
+	# config, but we'll keep munging it.
+#       loopback loop1 /mapper/loop0p1
+#       set root=(loop1)
+
+	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*loopback.*$//'
+	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*set root=(loop1).*$//'
     fi
 
     # turn off udev persistant stuff
