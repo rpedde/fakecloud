@@ -20,6 +20,15 @@ function init() {
     set -x
     set -u
 
+    mknod /tmp/zero-test-$$ c 1 5
+    if ! dd if=/tmp/zero-test-$$ bs=512 count=1 of=/dev/zero; then
+	log "/tmp appears to be mounted nodev.  Exiting"
+	rm /tmp/zero-test-$$
+	exit 1
+    fi
+
+    rm /tmp/zero-test-$$
+
     trap handle_error SIGINT SIGTERM ERR
     trap handle_exit EXIT
 
