@@ -147,9 +147,6 @@ function expand_dist_to_sized_base() {
     tar -xvzf ${BASE_DIR}/minibase/${1}.tar.gz -C ${working}/mnt
     mkdir -p ${working}/mnt/boot
 
-    # FIXME: debian specific
-    log_debug "Installing kernel..."
-
 
     # This is safe for everyone...
     if [ -e ${working}/mnt/etc/resolv.conf ]; then
@@ -167,8 +164,8 @@ function expand_dist_to_sized_base() {
 
     if [ "${EXTRA_PACKAGES-}" != "" ]; then
 	packages=${EXTRA_PACKAGES//,/ }
-	log_debug "Installing extra packages..."
-	get_install_package_command ${dist} ${release} ${packages}
+	log_debug "Installing kernel and extra packages..."
+	get_install_package_command ${dist} ${release} ${packages} ${package}
 	chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
     fi
 
