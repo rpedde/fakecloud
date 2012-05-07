@@ -28,7 +28,7 @@ function bootstrap() {
     log "debootstrapping $dist-$release with mirror ${mirror}"
     # -i <extra>
     febootstrap -g Core -i sudo ${dist}-${release} \
-	${tmpdir}/mountpoint ${url}
+	${tmpdir}/mountpoint ${mirror}
 }
 
 
