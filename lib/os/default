@@ -125,8 +125,10 @@ function get_install_package_command() {
     # $3 packagelist
 
     local dist=$1
-    local release=$2
-    local packagelist=$3
+    shift
+    local release=$1
+    shift
+    local packagelist=$@
 
     local command
 

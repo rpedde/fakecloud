@@ -3,7 +3,7 @@
 # this include defaults for rhel-ish operating sytems.  It tries to be
 # universal between rhel/cent/fedora
 
-EXTRA_PACKAGES=${RHELISH_EXTRA_PACKAGES:-sudo openssh-server}
+EXTRA_PACKAGES=${RHELISH_EXTRA_PACKAGES:-sudo openssh-server openssh-clients nss-mdns}
 
 function get_mirror() {
     # $1 - dist

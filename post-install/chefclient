@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# $1 - ip (assumes passwordless ssh)
+# $2 - distrelease
+# $3 - hints
+
+ip=${1}
+distrelease=${2}
+hints=${3}
+
+dist=${distrelease%%-*}
+release=${distrelease##*-}
+tmpdir=$(mktemp -d)
+chef_server=${CHEF_SERVER:-http://localhost:4000}
+chef_pem=${CHEF_PEM}
+chef_runlist=${CHEF_RUNLIST}
+[ -e /home/${SUDO_USER}/.ssh/id_dsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_dsa
+[ -e /home/${SUDO_USER}/.ssh/id_rsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_rsa
+
+SSHOPS="-o UserKnownhostsFile=/dev/null -o StrictHostKeyChecking=no"
+if [ "${IDENTITY_FILE-}" != "" ]; then
+    SSHOPS+=" -i${IDENTITY_FILE}"
+fi
+
+h=$(ssh ${SSHOPS} root@${ip} hostname -f)
+if knife node show $h; then 
+    knife node delete -y $h
+    knife client delete -y $h
+fi
+
+ssh ${SSHOPS} root@${ip} DEBIAN_FRONTEND=noninteractive apt-get install curl -y --force-yes
+ssh ${SSHOPS} root@${ip} 'curl -skS https://raw.github.com/opscode/omnibus/master/source/install.sh | bash'
+ssh ${SSHOPS} root@${ip} 'mkdir /etc/chef'
+
+cat <<EOF | ssh ${SSHOPS} root@${ip} 'cat > /etc/chef/client.rb'
+chef_server_url "$chef_server"
+EOF
+if ! [ -z "${VALIDATION_CLIENT_NAME}" ]; then
+    ssh ${SSHOPS} root@${ip} "echo \"validation_client_name '$VALIDATION_CLIENT_NAME'\" >> /etc/chef/client.rb"
+fi
+cat <<EOF | ssh ${SSHOPS} root@${ip} 'cat > /etc/chef/validation.pem'
+$chef_pem
+EOF
+
+ssh ${SSHOPS} root@${ip} chef-client
+
+for r in ${chef_runlist}; do
+    knife node run_list add $h $r
+done
+
+ssh ${SSHOPS} root@${ip} chef-client

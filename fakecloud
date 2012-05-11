@@ -123,6 +123,12 @@ case $action in
 	require 1 file
 	dispatch_file ${1}
 	;;
+    rekick)
+	require 1
+	name=${1}
+
+	rekick_instance ${name}
+	;;
     create)
 	# overload this a bit.  if there is a meta file named ${distrelease},
 	# we'll spin that instead of a bare distrelease

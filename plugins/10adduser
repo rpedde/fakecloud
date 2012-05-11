@@ -36,3 +36,10 @@ if [ -e ${mnt}/etc/sudoers ]; then
     echo "${SUDO_USER} ALL=(ALL) NOPASSWD:ALL" >> ${mnt}/etc/sudoers
 fi
 
+if [ -e ${mnt}/etc/sudoers ]; then
+    # fedora sets a requiretty default...  This is probably
+    # reasonably aggressive, and could possibly fail if other
+    # necessary lines are on the same default line.
+    sed -i ${mnt}/etc/sudoers -e 's/^Defaults.*requiretty.*$//'
+fi
+
