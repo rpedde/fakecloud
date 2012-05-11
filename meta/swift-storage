@@ -1,5 +1,5 @@
 #!/bin/bash
-POST_INSTALL=swift-storage
+POST_INSTALL=chefclient
 DEBUG=1
 FLAVOR=small
 DISTRELEASE=ubuntu-precise
