@@ -11,6 +11,13 @@ function destroy_instance_disk() {
     lvremove -f "${LVM_DEVICE}/${1}"
 }
 
+function get_instance_disk() {
+    # $1 name
+    local name=${1}
+
+    _RETVAL="${LVM_DEVICE}/${1}"
+}
+
 function get_qemu_type() {
     # qemu disk driver subtype: raw/qcow2/bochs/qed
     _RETVAL=raw

@@ -171,6 +171,35 @@ function destroy_instance_by_name() {
     rm -rf "${BASE_DIR}/instances/${name}"
 }
 
+function rekick_instance() {
+    # $1 - name
+
+    local name=${1}
+    if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
+	source "${BASE_DIR}/instances/${name}/${name}.vars"
+	source "${LIB_DIR}/disk/default"
+	source "${LIB_DIR}/disk/${DISK_FLAVOR}"
+	destroy_instance_disk "${name}"
+    else
+	return 1
+    fi
+
+    if ! virsh destroy ${name}; then
+	log "Instance wasn't running.  Rekicking."
+    fi
+
+    if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
+	log "No instance def for flavor ${flavor}"
+	return 1
+    fi
+
+    source ${BASE_DIR}/flavors/size/${flavor}
+    make_instance_drive $distrelease ${FLAVOR[disk]} ${name}
+
+    run_plugins ${name} ${distrelease}
+
+    log "Done"
+}
 
 function spin_instance() {
     # $1 name

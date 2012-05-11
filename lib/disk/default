@@ -8,6 +8,14 @@ function destroy_instance_disk() {
     return 0
 }
 
+function get_instance_disk() {
+    # $1 name
+    local name=${1}
+
+    _RETVAL="${BASE_DIR}/instance/${name}.disk"
+}
+
+
 # see if there is a disk image already of this size, if so
 # qcow it, otherwise make a new one and qcow *that*
 #
