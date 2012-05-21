@@ -175,9 +175,12 @@ function rekick_instance() {
     # $1 - name
 
     local name=${1}
+    local was_running=0
 
-    if ! virsh destroy ${name}; then
-	log "Instance wasn't running.  Rekicking."
+    if (virsh list | grep -q ${name}); then
+	log "Terminating instance."
+	was_running=1
+	virsh destroy ${name}
     fi
 
     if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
@@ -198,6 +201,11 @@ function rekick_instance() {
     make_instance_drive $distrelease ${FLAVOR[disk]} ${name}
 
     run_plugins ${name} ${distrelease}
+
+    if [ ${was_running} -eq 1 ]; then
+	log "Restarting instance"
+	virsh start ${name}
+    fi
 
     log "Done"
 }
