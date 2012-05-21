@@ -124,7 +124,7 @@ case $action in
 	dispatch_file ${1}
 	;;
     rekick)
-	require 1
+	require 1 name
 	name=${1}
 
 	rekick_instance ${name}

@@ -175,6 +175,11 @@ function rekick_instance() {
     # $1 - name
 
     local name=${1}
+
+    if ! virsh destroy ${name}; then
+	log "Instance wasn't running.  Rekicking."
+    fi
+
     if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
 	source "${BASE_DIR}/instances/${name}/${name}.vars"
 	source "${LIB_DIR}/disk/default"
@@ -182,10 +187,6 @@ function rekick_instance() {
 	destroy_instance_disk "${name}"
     else
 	return 1
-    fi
-
-    if ! virsh destroy ${name}; then
-	log "Instance wasn't running.  Rekicking."
     fi
 
     if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
