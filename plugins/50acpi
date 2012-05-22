@@ -14,6 +14,7 @@ release=${distrelease##*-}
 case ${dist} in
     ubuntu|debian)
         chroot ${mnt} apt-get install -y acpid
+	chroot ${mnt} service acpid stop
 	;;
     *)
 	echo "Can't do that, boss"
