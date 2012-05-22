@@ -11,7 +11,7 @@ function init() {
 	STATUSFILE="${basefile}.status"
 	COMPLETEFILE="${basefile}.complete"
     else
-	LOGFILE=$(mktemp /tmp/logfile-XXXXXXXXX.log)
+	LOGFILE=/tmp/fakecloud.log
     fi
 
     init_vars
@@ -19,6 +19,15 @@ function init() {
 
     set -x
     set -u
+
+    mknod /tmp/zero-test-$$ c 1 5
+    if ! dd if=/tmp/zero-test-$$ bs=512 count=1 of=/dev/zero; then
+	log "/tmp appears to be mounted nodev.  Exiting"
+	rm /tmp/zero-test-$$
+	exit 1
+    fi
+
+    rm /tmp/zero-test-$$
 
     trap handle_error SIGINT SIGTERM ERR
     trap handle_exit EXIT
@@ -89,7 +98,7 @@ function init_vars() {
     EVENT_DIR=${EVENT_DIR:-${SHARE_DIR}/events}
 
     # honor null
-    EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
+    # EXTRA_PACKAGES=${EXTRA_PACKAGES-emacs23-nox,sudo}
 
     VIRT_TEMPLATE=${VIRT_TEMPLATE:-kvm}
 
@@ -162,6 +171,36 @@ function destroy_instance_by_name() {
     rm -rf "${BASE_DIR}/instances/${name}"
 }
 
+function rekick_instance() {
+    # $1 - name
+
+    local name=${1}
+
+    if ! virsh destroy ${name}; then
+	log "Instance wasn't running.  Rekicking."
+    fi
+
+    if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
+	source "${BASE_DIR}/instances/${name}/${name}.vars"
+	source "${LIB_DIR}/disk/default"
+	source "${LIB_DIR}/disk/${DISK_FLAVOR}"
+	destroy_instance_disk "${name}"
+    else
+	return 1
+    fi
+
+    if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
+	log "No instance def for flavor ${flavor}"
+	return 1
+    fi
+
+    source ${BASE_DIR}/flavors/size/${flavor}
+    make_instance_drive $distrelease ${FLAVOR[disk]} ${name}
+
+    run_plugins ${name} ${distrelease}
+
+    log "Done"
+}
 
 function spin_instance() {
     # $1 name
@@ -318,7 +357,7 @@ function run_plugins() {
 
     for plugin in $(ls ${PLUGIN_DIR} | sort); do
 	log_debug "Running plugin \"${plugin}\"..."
-	if ! ( ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt" ); then
+	if ! ( /bin/bash -x ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt" > /tmp/plugins.log 2>&1 ); then
 	    log_debug "Plugin \"${plugin}\": failure"
 	else
 	    log_debug "Plugin \"${plugin}\": success"

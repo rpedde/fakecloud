@@ -8,6 +8,14 @@ function destroy_instance_disk() {
     return 0
 }
 
+function get_instance_disk() {
+    # $1 name
+    local name=${1}
+
+    _RETVAL="${BASE_DIR}/instance/${name}.disk"
+}
+
+
 # see if there is a disk image already of this size, if so
 # qcow it, otherwise make a new one and qcow *that*
 #
@@ -89,6 +97,7 @@ function expand_dist_to_sized_base() {
     function expand_dist_to_sized_base_cleanup() {
 	log_debug "cleaning up expand_dist_to_sized_base()"
 	umount ${working}/mnt/dev
+	umount ${working}/mnt/proc
 	umount ${working}/mnt
 	[ "${part_loop-}" != "" ] && losetup -d ${part_loop}
 	[ "${base_loop-}" != "" ] && kpartx -d ${base_loop}
@@ -112,7 +121,29 @@ function expand_dist_to_sized_base() {
     parted ${base_loop} mklabel msdos mkpart primary 1m 100%
     kpartx -a ${base_loop}
     log_debug "Formatting..."
-    mke2fs -j /dev/mapper/${loop_basename}p1
+
+    local fstype=ext3
+
+    case ${dist} in
+	ubuntu)
+	    package=linux-image-virtual
+	    grub_package=grub-pc
+	    ;;
+	debian)
+	    package=linux-image-${arch}
+	    grub_package="grub2 grub-common"
+	    ;;
+	redhat|centos|fedora)
+	    package=kernel
+	    grub_package="grub2"
+	    fstype=ext4
+	    ;;
+	*)
+	    echo "unknown dist"
+	    return 1
+    esac
+
+    mkfs.${fstype} -j /dev/mapper/${loop_basename}p1
 
     # reloop to make grub2 work
     part_loop=$(losetup -vf /dev/mapper/${loop_basename}p1 | awk '{ print $NF }')
@@ -124,29 +155,30 @@ function expand_dist_to_sized_base() {
     tar -xvzf ${BASE_DIR}/minibase/${1}.tar.gz -C ${working}/mnt
     mkdir -p ${working}/mnt/boot
 
-    # FIXME: debian specific
-    log_debug "Installing kernel..."
-    package=linux-image-virtual
-    grub_package=grub-pc
 
-    if [ "${dist}" == "debian" ]; then
-	package=linux-image-${arch}
-	grub_package="grub2 grub-common"
+    # This is safe for everyone...
+    if [ -e ${working}/mnt/etc/resolv.conf ]; then
+	cp /etc/resolv.conf ${working}/mnt/etc/resolv.conf
     fi
 
-    # oneiric.  pft.
-    cp /etc/resolv.conf ${working}/mnt/etc/resolv.conf
+    pre_grub ${dist} ${release} ${working}/mnt
+
+    mount --bind /dev ${working}/mnt/dev
+    mount --bind /proc ${working}/mnt/proc
 
     log_debug "Yet another apt-get update..."
-    chroot ${working}/mnt /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get update -y --force-yes"
+    get_update_packagelist_command ${dist} ${release}
+    chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
 
     if [ "${EXTRA_PACKAGES-}" != "" ]; then
 	packages=${EXTRA_PACKAGES//,/ }
-	log_debug "Installing extra packages..."
-	chroot ${working}/mnt /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install ${packages} -y --force-yes"
+	log_debug "Installing kernel and extra packages..."
+	get_install_package_command ${dist} ${release} ${packages} ${package}
+	chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
     fi
 
-    chroot ${working}/mnt /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install ${grub_package} ${package} -y --force-yes"
+    get_install_package_command ${dist} ${release} ${grub_package}
+    chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
 
     log_debug "Grubbing..."
     mkdir -p ${working}/mnt/boot/grub
@@ -154,16 +186,60 @@ function expand_dist_to_sized_base() {
 (hd0) ${base_loop}
 (hd0,1) ${part_loop}
 EOF
-    mount --bind /dev ${working}/mnt/dev
-    chroot ${working}/mnt /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
 
-    chroot ${working}/mnt /usr/sbin/grub-install --no-floppy --grub-mkdevicemap=/boot/grub/device.map --root-directory=/ ${base_loop}
+    local mkconfig=/usr/sbin/grub-mkconfig
+    local mkinstall=/usr/sbin/grub-install
+    local grubdir=/boot/grub
 
-    # turn off ubuntu ridiculousness
-    if [ -e ${working}/mnt/boot/grub/grub.cfg ]; then
+    if [ ! -e ${working}/mnt/${mkconfig} ]; then
+	mkconfig=/usr/sbin/grub2-mkconfig # fedora, others..
+	grubdir=/boot/grub2
+    fi
+
+    if [ ! -e ${working}/mnt/${mkinstall} ]; then
+	mkinstall=/usr/sbin/grub2-install # fedora, others..
+    fi
+
+    chroot ${working}/mnt ${mkconfig} -o ${grubdir}/grub.cfg
+
+    # is this crazy? WARNING!
+    if [[ "fedora-17 debian-wheezy" =~ "${dist}-${release}" ]]; then
+	# this seems mildly dangerous, and possibly screwing up grub in the guest.  Seems to work.  ish.
+	# if only grub2 didn't suck so badly.  maybe syslinux?
+
+        # since we're grubbing from the external system, match up the grub stuff
+	# with the exernal system's grub.
+	if [ "${grubdir}" != /boot/grub ]; then
+            cp ${working}/mnt/${grubdir}/grub.cfg ${working}/mnt/boot/grub/grub.cfg
+	    grubdir=/boot/grub
+	fi
+
+	if [ ! /usr/sbin/grub-probe --device-map=${working}/mnt/boot/grub/device.map --target=fs -v ${working}/mnt/boot/grub ]; then
+	    log "grub-probe failed... this might be bad"
+	fi
+
+	/usr/sbin/grub-install --no-floppy --grub-mkdevicemap=${working}/mnt/boot/grub/device.map --root-directory=${working}/mnt ${base_loop}
+
+    else
+	chroot ${working}/mnt ${mkinstall} --no-floppy --grub-mkdevicemap=/boot/grub/device.map --root-directory=/ ${base_loop}
+    fi
+
+    # turn off stupid quiet booting (ubuntu, fedora... I'm looking at you)
+    if [ -e ${working}/mnt/${grubdir}/grub.cfg ]; then
 	log_debug "Unfscking ubuntu-style boot options..."
-	chmod 600 ${working}/mnt/boot/grub/grub.cfg
-	sed -i ${working}/mnt/boot/grub/grub.cfg -e 's/quiet/nomodeset vga=0/'
+	chmod 600 ${working}/mnt/${grubdir}/grub.cfg
+	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/quiet/nomodeset vga=0/'
+	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/rhgb//'
+	# fedora wants to mount root fs read only... strange...
+	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/ ro / rw /'
+
+	# grub seems to lately be aware of loopback devices.  We might do better just to completely rewrite the grub
+	# config, but we'll keep munging it.
+#       loopback loop1 /mapper/loop0p1
+#       set root=(loop1)
+
+	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*loopback.*$//'
+	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*set root=(loop1).*$//'
     fi
 
     # turn off udev persistant stuff
@@ -171,7 +247,10 @@ EOF
 	rm ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules
     fi
 
+    post_grub ${dist} ${release} ${working}/mnt
+
     umount ${working}/mnt/dev
+    umount ${working}/mnt/proc
     umount ${working}/mnt
     losetup -d ${part_loop}
     sleep 1

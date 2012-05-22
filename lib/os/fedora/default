@@ -1,0 +1,35 @@
+# -*- mode: shell-script -*-
+
+source ${LIB_DIR}/os/rhelish
+
+# default to RHELISH_EXTRA_PACKAGES, but can be overriden for
+# fedora-specific packages
+
+EXTRA_PACKAGES=${FEDORA_EXTRA_PACKAGES:-${EXTRA_PACKAGES}}
+
+function valid_images() {
+    _RETVAL=""
+    for release in {10..17}; do
+	_RETVAL+="fedora-${release} "
+    done
+}
+
+function bootstrap() {
+    # bootstrap debianish distros
+    # $1 - dist
+    # $2 - release
+    # $3 - mirror
+    # $4 - tmpdir
+    local dist=$1
+    local release=$2
+    local mirror=$3
+    local tmpdir=$4
+
+    log "debootstrapping $dist-$release with mirror ${mirror}"
+    # -i <extra>
+    febootstrap -g Core -i sudo ${dist}-${release} \
+	${tmpdir}/mountpoint ${url}
+}
+
+
+

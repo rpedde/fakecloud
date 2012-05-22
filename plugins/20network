@@ -4,6 +4,8 @@
 # $2 - distrelease
 # $3 - mountpoint
 
+set +x
+
 name=${1}
 distrelease=${2}
 mnt=${3}
@@ -17,33 +19,26 @@ iface lo inet loopback
 allow-hotplug eth0
 iface eth0 inet dhcp
 EOF
-	# # temporarily remove upstart crap...
-	# if [ -e ${mnt}/sbin/initctl ]; then
-	#     mv ${mnt}/sbin/initctl ${mnt}/sbin/initctl.old
-	#     ln -s /bin/true ${mnt}/sbin/initctl
-	# fi
+	;;
 
-	# chroot ${mnt} apt-get install -y --force-yes libnss-mdns avahi-daemon
-
-	# if [ -e ${mnt}/sbin/initctl.old ]; then
-	#     rm -f ${mnt}/sbin/initctl
-	#     mv ${mnt}/sbin/initctl.old ${mnt}/sbin/initctl
-	# fi
-    cat > ${mnt}/etc/hosts <<EOF
-127.0.0.1       localhost
-127.0.1.1       ${name}
-
-# The following lines are desirable for IPv6 capable hosts
-::1     ip6-localhost ip6-loopback
-fe00::0 ip6-localnet
-ff00::0 ip6-mcastprefix
-ff02::1 ip6-allnodes
-ff02::2 ip6-allrouters
+    centos*|rhel*|fedora*)
+	cat > ${mnt}/etc/sysconfig/network-scripts/ifcfg-eth0 <<EOF
+NM_CONTROLLED="yes"
+BOOTPROTO="dhcp"
+DEVICE="eth0"
+ONBOOT="yes"
 EOF
-    cat > ${mnt}/etc/resolv.conf <<EOF
-nameserver 127.0.0.1
+
+	if [ ! -e ${mnt}/etc/sysconfig/network ]; then
+	    # febootstrap doesn't do this.  d'oh!
+	    cat > ${mnt}/etc/sysconfig/network <<EOF
+NETWORKING=yes
+HOSTNAME=${name}
 EOF
-    ;;
+	else
+	    sed -i ${mnt}/etc/sysconfig/network -e "s/HOSTNAME=.*/HOSTNAME=${name}/"
+	fi
+	;;
 
     *)
 	echo "Skipping network creation.  Unknown distrelease"
@@ -54,5 +49,19 @@ if [ -e ${mnt}/etc/udev/rules.d/70-persistent-net.rules ]; then
     rm ${mnt}/etc/udev/rules.d/70-persistent-net.rules
 fi
 
+cat > ${mnt}/etc/hosts <<EOF
+127.0.0.1       localhost
+127.0.1.1       ${name}
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+EOF
+cat > ${mnt}/etc/resolv.conf <<EOF
+nameserver 127.0.0.1
+EOF
 
 

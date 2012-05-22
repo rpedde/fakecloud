@@ -8,25 +8,38 @@ name=${1}
 distrelease=${2}
 mnt=${3}
 
+if [ "${SUDO_USER-}" != "" ]; then
+    pwhash=$(egrep "^${SUDO_USER}:" /etc/shadow | cut -d: -f2)
+else
+    return 0
+fi
+
 case ${distrelease} in
     ubuntu*|debian*)
-	if [ "${SUDO_USER-}" != "" ]; then
-	    pwhash=$(egrep "^${SUDO_USER}:" /etc/shadow | cut -d: -f2)
-	    chroot ${mnt} /usr/sbin/useradd -s /bin/bash -m -p "${pwhash}" ${SUDO_USER}
-	    mkdir ${mnt}/home/${SUDO_USER}/.ssh
-	    chmod 700 ${mnt}/home/${SUDO_USER}/.ssh
-	    cat /home/${SUDO_USER}/.ssh/id*pub >> ${mnt}/home/${SUDO_USER}/.ssh/authorized_keys
-	    chmod 600 ${mnt}/home/${SUDO_USER}/.ssh/*
-	    chroot ${mnt} chown -R ${SUDO_USER}: /home/${SUDO_USER}/.ssh
-
-	    if [ -e ${mnt}/etc/sudoers ]; then
-		echo "${SUDO_USER} ALL=(ALL) NOPASSWD:ALL" >> ${mnt}/etc/sudoers
-	    fi
-	fi
+	chroot ${mnt} /usr/sbin/useradd -s /bin/bash -m -p "${pwhash}" ${SUDO_USER}
+	;;
+    fedora*|centos*|rhel*)
+	chroot ${mnt} /sbin/useradd -s /bin/bash -m -p "${pwhash}" ${SUDO_USER}
 	;;
     *)
 	echo "Skipping user addition.  Unknown distrelease"
 	;;
 esac
 
+mkdir ${mnt}/home/${SUDO_USER}/.ssh
+chmod 700 ${mnt}/home/${SUDO_USER}/.ssh
+cat /home/${SUDO_USER}/.ssh/id*pub >> ${mnt}/home/${SUDO_USER}/.ssh/authorized_keys
+chmod 600 ${mnt}/home/${SUDO_USER}/.ssh/*
+chroot ${mnt} chown -R ${SUDO_USER}: /home/${SUDO_USER}/.ssh
+
+if [ -e ${mnt}/etc/sudoers ]; then
+    echo "${SUDO_USER} ALL=(ALL) NOPASSWD:ALL" >> ${mnt}/etc/sudoers
+fi
+
+if [ -e ${mnt}/etc/sudoers ]; then
+    # fedora sets a requiretty default...  This is probably
+    # reasonably aggressive, and could possibly fail if other
+    # necessary lines are on the same default line.
+    sed -i ${mnt}/etc/sudoers -e 's/^Defaults.*requiretty.*$//'
+fi
 

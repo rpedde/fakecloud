@@ -1,0 +1,17 @@
+# -*- mode: shell-script -*-
+
+source ${LIB_DIR}/os/rhelish
+
+# default to RHELISH_EXTRA_PACKAGES, but can be overriden for
+# centos-specific packages
+
+EXTRA_PACKAGES=${CENTOS_EXTRA_PACKAGES:-${EXTRA_PACKAGES}}
+
+function valid_images() {
+    _RETVAL=""
+    for release in {5..6}; do
+	_RETVAL+="centos-${release} "
+    done
+}
+
+
