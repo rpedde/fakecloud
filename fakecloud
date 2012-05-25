@@ -6,55 +6,55 @@ function require() {
     # $1 how many args required
     # $2... arg types for each (name|dir|file|anything) (optional)
     if [ ${#ARGV[@]} -ne ${1} ]; then
-	log "ERROR Missing arguments: expecting ${1}, got ${#ARGV[@]}"
-	exec 1>&3
-	usage
+        log "ERROR Missing arguments: expecting ${1}, got ${#ARGV[@]}"
+        exec 1>&3
+        usage
     fi
 
     if [ ${#@} -gt 1 ]; then
-	myargv=("${ARGV[@]}")
-	shift
+        myargv=("${ARGV[@]}")
+        shift
 
-	# we have type information
-	count=0
-	success=1
-	for argtype; do
-	    echo "checking \"${myargv[${count}]}\" as \"${1}\""
-	    arg=${myargv[${count}]}
-	    count=$((count + 1))
+        # we have type information
+        count=0
+        success=1
+        for argtype; do
+            echo "checking \"${myargv[${count}]}\" as \"${1}\""
+            arg=${myargv[${count}]}
+            count=$((count + 1))
 
-	    case ${1} in
-		name)
-		    # must be a valid defined machine name
-		    if [ ! -e ${BASE_DIR}/instances/${arg} ]; then
-			log "Argument $((count+1)) (${arg}) must be a valid instance name"
-			success=0
-		    fi
-		    ;;
-		dir)
-		    if [ ! -d ${arg} ]; then
-			log "Argument $((count+1)) (${arg}) must be a valid directory"
-			success=0
-		    fi
-		    ;;
-		file)
-		    if [ ! -e ${arg} ]; then
-			log "Argument $((count+1)) (${arg}) must be a valid file"
-			success=0
-		    fi
-		    ;;
-		*)
-		    # do no validation
-		    ;;
-	    esac
+            case ${1} in
+                name)
+                    # must be a valid defined machine name
+                    if [ ! -e ${BASE_DIR}/instances/${arg} ]; then
+                        log "Argument $((count+1)) (${arg}) must be a valid instance name"
+                        success=0
+                    fi
+                    ;;
+                dir)
+                    if [ ! -d ${arg} ]; then
+                        log "Argument $((count+1)) (${arg}) must be a valid directory"
+                        success=0
+                    fi
+                    ;;
+                file)
+                    if [ ! -e ${arg} ]; then
+                        log "Argument $((count+1)) (${arg}) must be a valid file"
+                        success=0
+                    fi
+                    ;;
+                *)
+                    # do no validation
+                    ;;
+            esac
 
-	    shift
-	done
+            shift
+        done
 
-	if [ ${success} -eq 0 ]; then
-	    usage
-	    exit 1
-	fi
+        if [ ${success} -eq 0 ]; then
+            usage
+            exit 1
+        fi
     fi
 }
 
@@ -85,28 +85,28 @@ init
 
 while getopts "D:f:dp:h:H:" option; do
     case $option in
-	h)
-	    HINTS=${OPTARG}
-	    ;;
-	p)
-	    POST_INSTALL=${OPTARG}
-	    ;;
-	d)
-	    NOCLEAN=1
-	    DEBUG=1
-	    ;;
-	D)
-	    DISK_FLAVOR=${OPTARG}
-	    ;;
-	H)
-	    HOST=${OPTARG}
-	    ;;
-	f)
-	    FLAVOR=${OPTARG}
-	    ;;
-	*)
-	    usage
-	    ;;
+        h)
+            HINTS=${OPTARG}
+            ;;
+        p)
+            POST_INSTALL=${OPTARG}
+            ;;
+        d)
+            NOCLEAN=1
+            DEBUG=1
+            ;;
+        D)
+            DISK_FLAVOR=${OPTARG}
+            ;;
+        H)
+            HOST=${OPTARG}
+            ;;
+        f)
+            FLAVOR=${OPTARG}
+            ;;
+        *)
+            usage
+            ;;
     esac
 done
 
@@ -120,119 +120,125 @@ ARGV=("$@")
 
 case $action in
     submit)
-	require 1 file
-	dispatch_file ${1}
-	;;
+        require 1 file
+        dispatch_file ${1}
+        ;;
     rekick)
-	require 1 name
-	name=${1}
+        require 1 name
+        name=${1}
 
-	rekick_instance ${name}
-	;;
+        rekick_instance ${name}
+        ;;
     create)
-	# overload this a bit.  if there is a meta file named ${distrelease},
-	# we'll spin that instead of a bare distrelease
-	require 2
-	name=${1}
-	distrelease=${2}
+        # overload this a bit.  if there is a meta file named ${distrelease},
+        # we'll spin that instead of a bare distrelease
+        require 2
+        name=${1}
+        distrelease=${2}
 
-	if [ -e ${META_DIR}/"${distrelease}" ]; then
-	    source ${META_DIR}/"${distrelease}"
-	    log "Spinning meta instance \"${distrelease}\""
+        if [ -e ${META_DIR}/"${distrelease}" ]; then
+            source ${META_DIR}/"${distrelease}"
+            log "Spinning meta instance \"${distrelease}\""
 
-	    distrelease=${DISTRELEASE-ubuntu-natty}
-	fi
+            distrelease=${DISTRELEASE-ubuntu-natty}
+        fi
 
-	log "Spinning instance named \"${name}\" as ${distrelease}"
-	spin_instance ${name} ${FLAVOR-tiny} ${distrelease}
-	;;
+        log "Spinning instance named \"${name}\" as ${distrelease}"
+        spin_instance ${name} ${FLAVOR-tiny} ${distrelease}
+        ;;
     destroy)
-	require 1 name
-	name=${1}
-	log "Destroying instance named \"${name}\""
-	destroy_instance_by_name $name
-	;;
+        require 1 name
+        name=${1}
+        log "Destroying instance named \"${name}\""
+        destroy_instance_by_name $name
+        ;;
     reboot)
-	require 1 name
-	name=${1}
+        require 1 name
+        name=${1}
 
-	log "Stopping instance \"${name}\""
-	virsh destroy ${name}
-	sleep 2
-	log "Starting instance \"${name}\""
-	virsh start ${name}
-	log "Done."
-	;;
+        log "Stopping instance \"${name}\""
+        virsh destroy ${name}
+        sleep 2
+        log "Starting instance \"${name}\""
+        virsh start ${name}
+        log "Done."
+        ;;
     stop)
-	require 1 name
-	log "Stopping ${1}"
-	virsh destroy ${1}
-	;;
+        require 1 name
+        log "Stopping ${1}"
+        virsh destroy ${1}
+        ;;
     start)
-	require 1 name
-	log "Starting ${1}"
-	virsh start ${1}
-	;;
+        require 1 name
+        log "Starting ${1}"
+        virsh start ${1}
+        ;;
     list)
-	require 0
-	log "Instance state:"
-	instances=$(ls ${BASE_DIR}/instances | sort)
-	virsh_status=$(virsh list --all)
-	count=0
-	for instance in ${instances}; do
-	    count=$(( count + 1 ))
-	    output="  ${instance}: "
+        require 0
+        log "Instance state:"
+        instances=$(ls ${BASE_DIR}/instances | sort)
+        virsh_status=$(virsh list --all)
+        count=0
 
-	    if $(echo "${virsh_status}" | grep -q " ${instance} "); then
-		output+="Defined "
-		if $(echo "${virsh_status}" | grep " ${instance} " | grep -q "shut off"); then
-		    output+=" (Powered off) "
-		else
-		    output+=" (Powered on) "
-		fi
-	    else
-		output+="Undefined (Error)"
-	    fi
-	    log "${output}"
-	done
+        # really shouldn't color through pipes, and throwing a truckload of
+        # subshells is probably stupid, but meh.
+        red=$(tput bold; tput setaf 1)
+        green=$(tput bold; tput setaf 2)
+        yellow=$(tput setaf 3)
+        reset=$(tput sgr0)
 
-	if [ $count -eq 0 ]; then
-	    log "  (NONE)"
-	fi
-	;;
+        for instance in ${instances}; do
+            count=$(( count + 1 ))
+            output="${instance}"
+
+            if $(echo "${virsh_status}" | grep -q " ${instance} "); then
+                if $(echo "${virsh_status}" | grep " ${instance} " | grep -q "shut off"); then
+                    output=" ${yellow}OFF ${reset}${output}"
+                else
+                    output=" ${green}ON  ${reset}${output}"
+                fi
+            else
+                output=" ${red}ERR ${reset}${output}"
+            fi
+            log "${output}"
+        done
+
+        if [ $count -eq 0 ]; then
+            log "  (NONE)"
+        fi
+        ;;
 
     image)
-	image_action=${1}
-	shift
-	unset ARGV[0]
-	# ARGV=("${ARGV[@]}")
+        image_action=${1}
+        shift
+        unset ARGV[0]
+        # ARGV=("${ARGV[@]}")
 
-	case ${image_action} in
-	    list)
-		require 0
+        case ${image_action} in
+            list)
+                require 0
 
-		image_list=""
-		for f in $(find ${LIB_DIR}/os/*/default -type f); do
-		    source $f
-		    valid_images
-		    image_list+="${_RETVAL} "
-		done
+                image_list=""
+                for f in $(find ${LIB_DIR}/os/*/default -type f); do
+                    source $f
+                    valid_images
+                    image_list+="${_RETVAL} "
+                done
 
-		log "Images:"
-		for image in ${image_list}; do
-		    log "  ${image}"
-		done
-		;;
-	    *)
-		log "Unknown image command: ${2}"
-		usage
-		;;
-	esac
-	;;
+                log "Images:"
+                for image in ${image_list}; do
+                    log "  ${image}"
+                done
+                ;;
+            *)
+                log "Unknown image command: ${2}"
+                usage
+                ;;
+        esac
+        ;;
 
     *)
-	log "Unknown command: ${action}"
-	usage
-	;;
+        log "Unknown command: ${action}"
+        usage
+        ;;
 esac
-
