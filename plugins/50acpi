@@ -13,7 +13,12 @@ release=${distrelease##*-}
 
 case ${dist} in
     ubuntu|debian)
+<<<<<<< HEAD
+        chroot ${mnt} apt-get install -y acpid
+	chroot ${mnt} service acpid stop
+=======
         chroot ${mnt} /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y acpid"
+>>>>>>> 275063240a82a8b56a29d1f5d75ce0d6c4095cbb
 	;;
     *)
 	echo "Can't do that, boss"
