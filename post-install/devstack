@@ -10,7 +10,6 @@ hints=${3}
 
 dist=${distrelease%%-*}
 release=${distrelease##*-}
-tmpdir=$(mktemp -d)
 
 [ -e /home/${SUDO_USER}/.ssh/id_dsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_dsa
 [ -e /home/${SUDO_USER}/.ssh/id_rsa ] && IDENTITY_FILE=/home/${SUDO_USER}/.ssh/id_rsa
@@ -22,8 +21,17 @@ fi
 
 case ${distrelease} in
     ubuntu*)
-	ssh ${SSHOPS} root@{ip} DEBIAN_FRONTEND=noninteractive apt-get install git
-	ssh ${SSHOPS} root@{ip} cd /opt && git clone https://github.com/openstack-dev/devstack
+	ssh ${SSHOPS} root@${ip} DEBIAN_FRONTEND=noninteractive apt-get -y install git
+	ssh ${SSHOPS} root@${ip} 'cd /opt && git clone https://github.com/openstack-dev/devstack'
+        # https://github.com/chalupaul/devstackhelper/blob/master/genlocalrc.sh
+        echo $CONTRIB_DIR ahhaah
+        [ -f $CONTRIB_DIR/genlocalrc.sh ] && source $CONTRIB_DIR/genlocalrc.sh
+        if declare -f genlocalrc &> /dev/null; then
+            localrc=$(tempfile)
+            genlocalrc $localrc
+            scp ${SSHOPS} $localrc root@${ip}:/opt/devstack/localrc
+            rm $localrc
+        fi
 	;;
 
     *)
