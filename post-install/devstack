@@ -4,6 +4,12 @@
 # $2 - distrelease
 # $3 - hints
 
+# This script works without a genlocalrc helper, but if you wish to
+# upload a special localrc, you will need to define CONTRIB_DIR in
+# your .fakecloudrc and put a script called genlocalrc.sh that defines
+# a genlocalrc function.  The genlocalrc function takes a filename and
+# outputs a localrc file into said filename.
+
 ip=${1}
 distrelease=${2}
 hints=${3}
