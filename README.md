@@ -32,6 +32,11 @@ maybe make a ~/.fakecloudrc with bash environment variables:
 
       # root password on default kicks.  Don't set for key-only
       ROOT_PASSWORD=secret
+      
+      # Which libvirt template to use
+      # Use "nestedkvm" and make sure you load your kvm_intel or kvm_amd
+      # model with nested=1 for nested virt.
+      VIRT_TEMPLATE="kvm"
 
 Use
 ---
@@ -71,6 +76,8 @@ Tips
 
 * make sure you have a bridge device up, as that's where your vnet device
 will get connected.
+
+* make sure the loop module is loaded with max_part=16
 
 Stuff to Do
 -----------
