@@ -125,7 +125,11 @@ function expand_dist_to_sized_base() {
     local fstype=ext3
 
     case ${dist} in
-        ubuntu|debian)
+        ubuntu)
+            package=linux-image-generic
+            grub_package="grub-pc"
+            ;;
+        debian)
             package=linux-image-${arch}
             grub_package="grub2 grub-common"
             ;;
