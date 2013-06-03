@@ -127,7 +127,7 @@ function expand_dist_to_sized_base() {
     case ${dist} in
         ubuntu)
             package=linux-image-generic
-            grub_package="grub2 grub-common"
+            grub_package="grub-pc"
             ;;
         debian)
             package=linux-image-${arch}
