@@ -41,26 +41,26 @@ maybe make a ~/.fakecloudrc with bash environment variables:
 Use
 ---
 
-	# Kick an instance named "test-instance" with ubuntu 11.04
-	sudo fakecloud create test-instance ubuntu-natty
+    # Kick an instance named "test-instance" with ubuntu 11.04
+    sudo fakecloud create test-instance ubuntu-natty
 
-	# List all fakecloud instances and kvm states
-	sudo fakecloud list
+    # List all fakecloud instances and kvm states
+    sudo fakecloud list
 
-	# destroy the instance "test-instance" and clean up all qcow images
-	sudo fakecloud destroy test-instance
+    # destroy the instance "test-instance" and clean up all qcow images
+    sudo fakecloud destroy test-instance
 
 
 Advanced Use
 ------------
 
-	# kick a 11.04 instance and run the post-install script "kong" when complete
-	# also, show debugging logs
-	sudo fakecloud -d -pkong create test-instance ubuntu-natty
+    # kick a 11.04 instance and run the post-install script "kong" when complete
+    # also, show debugging logs
+    sudo fakecloud -d -pkong create test-instance ubuntu-natty
 
-	# kick a 10.10 instance using the default "small" flavor (12G disk,
-	# 1G ram, 1vcpu)
-	sudo fakecloud -fsmall create test-instance ubuntu-maverick
+    # kick a 10.10 instance using the default "small" flavor (12G disk,
+    # 1G ram, 1vcpu)
+    sudo fakecloud -fsmall create test-instance ubuntu-maverick
 
 This should probably work with ubuntu-maverick, ubuntu-natty, ubuntu-oneiric (if
 your debootstrap script understands it... otherwise just symlink oneiric to gutsy

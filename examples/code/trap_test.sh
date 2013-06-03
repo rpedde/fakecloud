@@ -22,9 +22,9 @@ function init() {
 function f1() {
     local status
     function f1_cleanup() {
-	status=$?
-	echo "in f1_cleanup: status=${status}"
-	return ${status}
+        status=$?
+        echo "in f1_cleanup: status=${status}"
+        return ${status}
     }
     trap "f1_cleanup; return ${status}" ERR
 
@@ -36,9 +36,9 @@ function f1() {
 function f2() {
     local status
     function f2_cleanup() {
-	status=$?
-	echo "in f2_cleanup: status=${status}"
-	return ${status}
+        status=$?
+        echo "in f2_cleanup: status=${status}"
+        return ${status}
     }
     trap "f2_cleanup; return ${status}" ERR
 
@@ -53,4 +53,3 @@ trap global_cleanup ERR SIGTERM SIGINT
 trap global_exit EXIT
 
 f1
-

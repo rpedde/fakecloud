@@ -23,13 +23,13 @@ if [ "${IDENTITY_FILE-}" != "" ]; then
 fi
 
 h=$(ssh ${SSHOPS} root@${ip} hostname -f)
-if knife node show $h; then 
+if knife node show $h; then
     knife node delete -y $h
     knife client delete -y $h
 fi
 
 ssh ${SSHOPS} root@${ip} DEBIAN_FRONTEND=noninteractive apt-get install curl -y --force-yes
-ssh ${SSHOPS} root@${ip} 'curl -skS https://raw.github.com/opscode/omnibus/master/source/install.sh | bash'
+ssh ${SSHOPS} root@${ip} 'curl -skS https://www.opscode.com/chef/install.sh | bash'
 ssh ${SSHOPS} root@${ip} 'mkdir /etc/chef'
 
 cat <<EOF | ssh ${SSHOPS} root@${ip} 'cat > /etc/chef/client.rb'

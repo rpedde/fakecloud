@@ -16,9 +16,9 @@ function image_detail() {
 
     _RETVAL="{"
     for val in name status created updated; do
-	_RETVAL+="\"${val}\": "
-	_RETVAL+="\"$(eval echo "\"\$image_${val}\"")\""
-	_RETVAL+=", "
+        _RETVAL+="\"${val}\": "
+        _RETVAL+="\"$(eval echo "\"\$image_${val}\"")\""
+        _RETVAL+=", "
     done
 
     _RETVAL+="\"id\": ${image_id}}"
@@ -28,39 +28,39 @@ function handle_request() {
     local response=""
 
     if [ ${#post_info[@]} -eq 0 ]; then
-	# all flavors
-	image_list=""
-	for f in $(find ${LIB_DIR}/os -type f); do
-	    source $f
-	    valid_images
-	    image_list+=${_RETVAL}
-	done
+        # all flavors
+        image_list=""
+        for f in $(find ${LIB_DIR}/os -type f); do
+            source $f
+            valid_images
+            image_list+=${_RETVAL}
+        done
 
-	response="{ \"images\": ["
+        response="{ \"images\": ["
 
-	local first_image=1
-	for image in $image_list; do
-	    image_detail ${image}
-	    if [ ${first_image} -ne 1 ]; then
-		response+=","
-	    fi
-	    first_image=0
-	    response+=${_RETVAL}
-	done
+        local first_image=1
+        for image in $image_list; do
+            image_detail ${image}
+            if [ ${first_image} -ne 1 ]; then
+                response+=","
+            fi
+            first_image=0
+            response+=${_RETVAL}
+        done
 
-	response+="]}"
+        response+="]}"
     else
-	# single_flavor
-	sm_lookup_by_key "images" ${post_info[0]}
+        # single_flavor
+        sm_lookup_by_key "images" ${post_info[0]}
 
-	if [ "$_RETVAL" == "UNKNOWN" ]; then
-	    response "404 Not Found" "text/plain" "Not a valid image id"
-	fi
+        if [ "$_RETVAL" == "UNKNOWN" ]; then
+            response "404 Not Found" "text/plain" "Not a valid image id"
+        fi
 
-	response="{ \"image\":"
-	image_detail ${_RETVAL}
-	response+=${_RETVAL}
-	response+="]}"
+        response="{ \"image\":"
+        image_detail ${_RETVAL}
+        response+=${_RETVAL}
+        response+="]}"
     fi
 
     response_headers[content-type]="application/json"

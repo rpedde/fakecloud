@@ -32,10 +32,10 @@ function clean_up_jobs {
     local fname
 
     for job in $(ls ${EVENT_DIR}/*job); do
-	fname=$(basename ${job} .job)
-	if [ -e ${EVENT_DIR}/${fname}.status ] && [ -e ${EVENT_DIR}/${fname}.complete ]; then
-	    rm -f ${EVENT_DIR}/${fname}.{status,complete,job,log}
-	fi
+        fname=$(basename ${job} .job)
+        if [ -e ${EVENT_DIR}/${fname}.status ] && [ -e ${EVENT_DIR}/${fname}.complete ]; then
+            rm -f ${EVENT_DIR}/${fname}.{status,complete,job,log}
+        fi
     done
 }
 
@@ -47,20 +47,20 @@ function dispatch_event {
     file=${2}
 
     if [ "${file}" == "" ]; then
-	datelog "Event: ${event}"
+        datelog "Event: ${event}"
     else
-	datelog "Event: ${event} on file ${file}"
+        datelog "Event: ${event} on file ${file}"
     fi
 
     case ${event} in
-	CREATE)
-	    if [[ $file = *.job ]]; then
-		datelog "New job... starting job worker"
-		source ${EVENT_DIR}/${file}
-		init ${EVENT_DIR}/${file}
-		dispatch_job &
-	    fi
-	    ;;
+        CREATE)
+            if [[ $file = *.job ]]; then
+                datelog "New job... starting job worker"
+                source ${EVENT_DIR}/${file}
+                init ${EVENT_DIR}/${file}
+                dispatch_job &
+            fi
+            ;;
     esac
 }
 

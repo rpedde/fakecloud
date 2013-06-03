@@ -20,8 +20,8 @@ function validate_image() {
     image_name=${BASE_DIR}/minibase/${1}.tar.gz
 
     if [ -e ${image_name} ]; then
-	log_debug "Image exists..."
-	return 0
+        log_debug "Image exists..."
+        return 0
     fi
     return 1
 }
@@ -61,11 +61,11 @@ function customize_keys() {
     # $1 - path to mounted root to customize
 
     if [ "${SSH_KEY-}" != "" ]; then
-	log_debug "Installing ssh keys from ${SSH_KEY}"
-	mkdir -p ${1}/root/.ssh
-	chmod 700 ${1}/root/.ssh
-	cat ${SSH_KEY} >> ${1}/root/.ssh/authorized_keys
-	chmod 600 ${1}/root/.ssh/authorized_keys
+        log_debug "Installing ssh keys from ${SSH_KEY}"
+        mkdir -p ${1}/root/.ssh
+        chmod 700 ${1}/root/.ssh
+        cat ${SSH_KEY} >> ${1}/root/.ssh/authorized_keys
+        chmod 600 ${1}/root/.ssh/authorized_keys
     fi
 }
 
@@ -82,7 +82,7 @@ function bootstrap() {
 
     log "debootstrapping $dist-$release with mirror ${mirror}"
     debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
-	${tmpdir}/mountpoint ${mirror}
+        ${tmpdir}/mountpoint ${mirror}
 }
 
 function customize_passwd() {
@@ -90,9 +90,9 @@ function customize_passwd() {
     # set root password
 
     if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
-	if [ "${ROOT_PASSWORD-}" != "" ]; then
-	    chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
-	fi
+        if [ "${ROOT_PASSWORD-}" != "" ]; then
+            chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
+        fi
     fi
 }
 
@@ -133,15 +133,15 @@ function get_install_package_command() {
     local command
 
     case ${dist} in
-	debian|ubuntu)
-	    command="DEBIAN_FRONTEND=noninteractive apt-get install ${packagelist} -y --force-yes"
-	    ;;
-	redhat|centos|fedora)
-	    command="yum -y install ${packagelist}"
-	    ;;
-	*)
-	    trap deinit ERR EXIT
-	    exit 1
+        debian|ubuntu)
+            command="DEBIAN_FRONTEND=noninteractive apt-get install ${packagelist} -y --force-yes"
+            ;;
+        redhat|centos|fedora)
+            command="yum -y install ${packagelist}"
+            ;;
+        *)
+            trap deinit ERR EXIT
+            exit 1
     esac
 
     _RETVAL=${command}
@@ -157,20 +157,16 @@ function get_update_packagelist_command() {
     local command
 
     case ${dist} in
-	debian|ubuntu)
-	    command="apt-get update -y --force-yes"
-	    ;;
-	redhat|centos|fedora)
-	    command="true"
-	    ;;
-	*)
-	    echo "unknown dist"
-	    return 1
+        debian|ubuntu)
+            command="apt-get update -y --force-yes"
+            ;;
+        redhat|centos|fedora)
+            command="true"
+            ;;
+        *)
+            echo "unknown dist"
+            return 1
     esac
 
     _RETVAL=${command}
 }
-
-
-
-

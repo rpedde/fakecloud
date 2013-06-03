@@ -13,9 +13,9 @@ function server_detail() {
 
     _RETVAL="{"
     for val in name status hostId flavorId imageId; do
-	_RETVAL+="\"${val}\": "
-	_RETVAL+="\"$(eval echo "\"\$server_${val}\"")\""
-	_RETVAL+=", "
+        _RETVAL+="\"${val}\": "
+        _RETVAL+="\"$(eval echo "\"\$server_${val}\"")\""
+        _RETVAL+=", "
     done
     _RETVAL+="\"id\": ${server_id}, \"addresses\": {\"public\": [ \"1.1.1.1\" ], \"private\": [ \"2.2.2.2\" ] }}"
 }
@@ -24,34 +24,34 @@ function handle_request() {
     local response=""
 
     if [ ${#post_info[@]} -eq 0 ]; then
-	# all instances
-	server_list=$(ls /var/lib/spin/instances)
+        # all instances
+        server_list=$(ls /var/lib/spin/instances)
 
-	response="{ \"servers\": ["
+        response="{ \"servers\": ["
 
-	local first_image=1
-	for server in $server_list; do
-	    server_detail ${server}
-	    if [ ${first_image} -ne 1 ]; then
-		response+=","
-	    fi
-	    first_image=0
-	    response+=${_RETVAL}
-	done
+        local first_image=1
+        for server in $server_list; do
+            server_detail ${server}
+            if [ ${first_image} -ne 1 ]; then
+                response+=","
+            fi
+            first_image=0
+            response+=${_RETVAL}
+        done
 
-	response+="]}"
+        response+="]}"
     else
-	# single_flavor
-	sm_lookup_by_key "servers" ${post_info[0]}
+        # single_flavor
+        sm_lookup_by_key "servers" ${post_info[0]}
 
-	if [ "$_RETVAL" == "UNKNOWN" ]; then
-	    response "404 Not Found" "text/plain" "Not a valid server id"
-	fi
+        if [ "$_RETVAL" == "UNKNOWN" ]; then
+            response "404 Not Found" "text/plain" "Not a valid server id"
+        fi
 
-	response="{ \"server\":"
-	image_detail ${_RETVAL}
-	response+=${_RETVAL}
-	response+="]}"
+        response="{ \"server\":"
+        image_detail ${_RETVAL}
+        response+=${_RETVAL}
+        response+="]}"
     fi
 
     response_headers[content-type]="application/json"

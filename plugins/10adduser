@@ -16,14 +16,14 @@ fi
 
 case ${distrelease} in
     ubuntu*|debian*)
-	chroot ${mnt} /usr/sbin/useradd -s /bin/bash -m -p "${pwhash}" ${SUDO_USER}
-	;;
+        chroot ${mnt} /usr/sbin/useradd -s /bin/bash -m -p "${pwhash}" ${SUDO_USER}
+        ;;
     fedora*|centos*|rhel*)
-	chroot ${mnt} /sbin/useradd -s /bin/bash -m -p "${pwhash}" ${SUDO_USER}
-	;;
+        chroot ${mnt} /sbin/useradd -s /bin/bash -m -p "${pwhash}" ${SUDO_USER}
+        ;;
     *)
-	echo "Skipping user addition.  Unknown distrelease"
-	;;
+        echo "Skipping user addition.  Unknown distrelease"
+        ;;
 esac
 
 mkdir ${mnt}/home/${SUDO_USER}/.ssh
@@ -42,4 +42,3 @@ if [ -e ${mnt}/etc/sudoers ]; then
     # necessary lines are on the same default line.
     sed -i ${mnt}/etc/sudoers -e 's/^Defaults.*requiretty.*$//'
 fi
-
