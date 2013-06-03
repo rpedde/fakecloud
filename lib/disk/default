@@ -31,15 +31,15 @@ function make_bootable_drive() {
     log_debug "Making bootable drive"
 
     if [ ! -e ${BASE_DIR}/instances ]; then
-	mkdir -p ${BASE_DIR}/instances
+        mkdir -p ${BASE_DIR}/instances
     fi
 
     mkdir -p "${BASE_DIR}/instances/${name}"
 
     if [ -e "${BASE_DIR}/instances/${name}/${name}.disk" ]; then
-	log "Instance already exists... choose another name"
-	trap deinit ERR EXIT
-	exit 1
+        log "Instance already exists... choose another name"
+        trap deinit ERR EXIT
+        exit 1
     fi
 
     expand_dist_to_sized_base ${distrelease} ${size}
@@ -51,7 +51,7 @@ function expand_dist_to_sized_base() {
     # $2 - size in Gb
 
     if [ ! -e ${BASE_DIR}/base ]; then
-	mkdir -p ${BASE_DIR}/base
+        mkdir -p ${BASE_DIR}/base
     fi
 
     local distrelease=${1}
@@ -65,8 +65,8 @@ function expand_dist_to_sized_base() {
     maybe_make_dist_image ${distrelease}
 
     if ( have_sized_base ${distrelease} ${size} ); then
-	log_debug "Already have bootable sized base..."
-	return 0
+        log_debug "Already have bootable sized base..."
+        return 0
     fi
 
     log "Creating sized base for ${distrelease} (size: ${size}G)"
@@ -95,17 +95,17 @@ function expand_dist_to_sized_base() {
     working=$(mktemp -d)
 
     function expand_dist_to_sized_base_cleanup() {
-	log_debug "cleaning up expand_dist_to_sized_base()"
-	umount ${working}/mnt/dev
-	umount ${working}/mnt/proc
-	umount ${working}/mnt
-	[ "${part_loop-}" != "" ] && losetup -d ${part_loop}
-	[ "${base_loop-}" != "" ] && kpartx -d ${base_loop}
-	[ "${base_loop-}" != "" ] && losetup -d ${base_loop}
-	[ "${rawfile-}" != "" ] && destroy_raw_device ${rawfile}
-	rm -rf ${working}
-	echo ${working}
-	return 1
+        log_debug "cleaning up expand_dist_to_sized_base()"
+        umount ${working}/mnt/dev
+        umount ${working}/mnt/proc
+        umount ${working}/mnt
+        [ "${part_loop-}" != "" ] && losetup -d ${part_loop}
+        [ "${base_loop-}" != "" ] && kpartx -d ${base_loop}
+        [ "${base_loop-}" != "" ] && losetup -d ${base_loop}
+        [ "${rawfile-}" != "" ] && destroy_raw_device ${rawfile}
+        rm -rf ${working}
+        echo ${working}
+        return 1
     }
 
     trap 'expand_dist_to_sized_base_cleanup; return 1' SIGINT SIGTERM ERR
@@ -125,22 +125,22 @@ function expand_dist_to_sized_base() {
     local fstype=ext3
 
     case ${dist} in
-	ubuntu)
-	    package=linux-image-virtual
-	    grub_package=grub-pc
-	    ;;
-	debian)
-	    package=linux-image-${arch}
-	    grub_package="grub2 grub-common"
-	    ;;
-	redhat|centos|fedora)
-	    package=kernel
-	    grub_package="grub2"
-	    fstype=ext4
-	    ;;
-	*)
-	    echo "unknown dist"
-	    return 1
+        ubuntu)
+            package=linux-image-virtual
+            grub_package=grub-pc
+            ;;
+        debian)
+            package=linux-image-${arch}
+            grub_package="grub2 grub-common"
+            ;;
+        redhat|centos|fedora)
+            package=kernel
+            grub_package="grub2"
+            fstype=ext4
+            ;;
+        *)
+            echo "unknown dist"
+            return 1
     esac
 
     mkfs.${fstype} -j /dev/mapper/${loop_basename}p1
@@ -158,7 +158,7 @@ function expand_dist_to_sized_base() {
 
     # This is safe for everyone...
     if [ -e ${working}/mnt/etc/resolv.conf ]; then
-	cp /etc/resolv.conf ${working}/mnt/etc/resolv.conf
+        cp /etc/resolv.conf ${working}/mnt/etc/resolv.conf
     fi
 
     pre_grub ${dist} ${release} ${working}/mnt
@@ -171,10 +171,10 @@ function expand_dist_to_sized_base() {
     chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
 
     if [ "${EXTRA_PACKAGES-}" != "" ]; then
-	packages=${EXTRA_PACKAGES//,/ }
-	log_debug "Installing kernel and extra packages..."
-	get_install_package_command ${dist} ${release} ${packages} ${package}
-	chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
+        packages=${EXTRA_PACKAGES//,/ }
+        log_debug "Installing kernel and extra packages..."
+        get_install_package_command ${dist} ${release} ${packages} ${package}
+        chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
     fi
 
     get_install_package_command ${dist} ${release} ${grub_package}
@@ -192,59 +192,59 @@ EOF
     local grubdir=/boot/grub
 
     if [ ! -e ${working}/mnt/${mkconfig} ]; then
-	mkconfig=/usr/sbin/grub2-mkconfig # fedora, others..
-	grubdir=/boot/grub2
+        mkconfig=/usr/sbin/grub2-mkconfig # fedora, others..
+        grubdir=/boot/grub2
     fi
 
     if [ ! -e ${working}/mnt/${mkinstall} ]; then
-	mkinstall=/usr/sbin/grub2-install # fedora, others..
+        mkinstall=/usr/sbin/grub2-install # fedora, others..
     fi
 
     chroot ${working}/mnt ${mkconfig} -o ${grubdir}/grub.cfg
 
     # is this crazy? WARNING!
     if [[ "fedora-17 debian-wheezy" =~ "${dist}-${release}" ]]; then
-	# this seems mildly dangerous, and possibly screwing up grub in the guest.  Seems to work.  ish.
-	# if only grub2 didn't suck so badly.  maybe syslinux?
+        # this seems mildly dangerous, and possibly screwing up grub in the guest.  Seems to work.  ish.
+        # if only grub2 didn't suck so badly.  maybe syslinux?
 
         # since we're grubbing from the external system, match up the grub stuff
-	# with the exernal system's grub.
-	if [ "${grubdir}" != /boot/grub ]; then
+        # with the exernal system's grub.
+        if [ "${grubdir}" != /boot/grub ]; then
             cp ${working}/mnt/${grubdir}/grub.cfg ${working}/mnt/boot/grub/grub.cfg
-	    grubdir=/boot/grub
-	fi
+            grubdir=/boot/grub
+        fi
 
-	if [ ! /usr/sbin/grub-probe --device-map=${working}/mnt/boot/grub/device.map --target=fs -v ${working}/mnt/boot/grub ]; then
-	    log "grub-probe failed... this might be bad"
-	fi
+        if [ ! /usr/sbin/grub-probe --device-map=${working}/mnt/boot/grub/device.map --target=fs -v ${working}/mnt/boot/grub ]; then
+            log "grub-probe failed... this might be bad"
+        fi
 
-	/usr/sbin/grub-install --no-floppy --grub-mkdevicemap=${working}/mnt/boot/grub/device.map --root-directory=${working}/mnt ${base_loop}
+        /usr/sbin/grub-install --no-floppy --grub-mkdevicemap=${working}/mnt/boot/grub/device.map --root-directory=${working}/mnt ${base_loop}
 
     else
-	chroot ${working}/mnt ${mkinstall} --no-floppy --grub-mkdevicemap=/boot/grub/device.map --root-directory=/ ${base_loop}
+        chroot ${working}/mnt ${mkinstall} --no-floppy --grub-mkdevicemap=/boot/grub/device.map --root-directory=/ ${base_loop}
     fi
 
     # turn off stupid quiet booting (ubuntu, fedora... I'm looking at you)
     if [ -e ${working}/mnt/${grubdir}/grub.cfg ]; then
-	log_debug "Unfscking ubuntu-style boot options..."
-	chmod 600 ${working}/mnt/${grubdir}/grub.cfg
-	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/quiet/nomodeset vga=0/'
-	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/rhgb//'
-	# fedora wants to mount root fs read only... strange...
-	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/ ro / rw /'
+        log_debug "Unfscking ubuntu-style boot options..."
+        chmod 600 ${working}/mnt/${grubdir}/grub.cfg
+        sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/quiet/nomodeset vga=0/'
+        sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/rhgb//'
+        # fedora wants to mount root fs read only... strange...
+        sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/ ro / rw /'
 
-	# grub seems to lately be aware of loopback devices.  We might do better just to completely rewrite the grub
-	# config, but we'll keep munging it.
+        # grub seems to lately be aware of loopback devices.  We might do better just to completely rewrite the grub
+        # config, but we'll keep munging it.
 #       loopback loop1 /mapper/loop0p1
 #       set root=(loop1)
 
-	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*loopback.*$//'
-	sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*set root=(loop1).*$//'
+        sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*loopback.*$//'
+        sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*set root=(loop1).*$//'
     fi
 
     # turn off udev persistant stuff
     if [ -e ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules ]; then
-	rm ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules
+        rm ${working}/mnt/etc/udev/rules.d/70-persistent-net.rules
     fi
 
     post_grub ${dist} ${release} ${working}/mnt
@@ -263,5 +263,3 @@ EOF
 
     return 0
 }
-
-
