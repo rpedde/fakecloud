@@ -33,7 +33,7 @@ fi
 
 case ${distrelease} in
     ubuntu*)
-	cat > ${tmpdir}/dna.json <<EOF
+        cat > ${tmpdir}/dna.json <<EOF
 {
   "public": {
     "label": "public",
@@ -67,15 +67,14 @@ case ${distrelease} in
 }
 EOF
 
-	wget --no-check-certificate https://raw.github.com/rcbops/chef-cookbooks/master/cookbooks.tgz -O ${tmpdir}/cookbooks.tar.gz
+        wget --no-check-certificate https://raw.github.com/rcbops/chef-cookbooks/master/cookbooks.tgz -O ${tmpdir}/cookbooks.tar.gz
 
-	scp ${SSHOPS} ${tmpdir}/* root@${ip}:
-	ssh ${SSHOPS} root@${ip} DEBIAN_FRONTEND=noninteractive apt-get install chef -y --force-yes
-	ssh ${SSHOPS} root@${ip} chef-solo -r ./cookbooks.tar.gz -j ./dna.json -l debug
-	;;
+        scp ${SSHOPS} ${tmpdir}/* root@${ip}:
+        ssh ${SSHOPS} root@${ip} DEBIAN_FRONTEND=noninteractive apt-get install chef -y --force-yes
+        ssh ${SSHOPS} root@${ip} chef-solo -r ./cookbooks.tar.gz -j ./dna.json -l debug
+        ;;
 
     *)
-	echo "Can't do, boss."
-	;;
+        echo "Can't do, boss."
+        ;;
 esac
-

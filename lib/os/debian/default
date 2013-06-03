@@ -5,7 +5,7 @@ EXTRA_PACKAGES=${DEBIAN_EXTRA_PACKAGES:-emacs23-nox sudo}
 function valid_images() {
     _RETVAL=""
     for release in squeeze etch; do
-	_RETVAL+="debian-${release} "
+        _RETVAL+="debian-${release} "
     done
 }
 
@@ -15,4 +15,3 @@ function get_mirror() {
 
     _RETVAL=${DEBIAN_MIRROR:-http://ftp.us.debian.org/debian}
 }
-

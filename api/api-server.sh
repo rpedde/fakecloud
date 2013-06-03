@@ -40,7 +40,7 @@ response_headers=(
 
 function max() {
     if [ ${1} -gt ${2} ]; then
-	return ${1}
+        return ${1}
     fi
     return ${2}
 }
@@ -51,7 +51,7 @@ function start_response() {
 
     # jet out the headers
     for header in ${!response_headers[@]}; do
-	echo "${header}: ${response_headers[${header}]}" >&3
+        echo "${header}: ${response_headers[${header}]}" >&3
     done
     echo >&3
 }
@@ -72,7 +72,7 @@ function response() {
     shift
     shift
     if [[ "$@" != "" ]]; then
-	continue_response "$@"
+        continue_response "$@"
     fi
     end_response
 }
@@ -81,28 +81,28 @@ function error_handler() {
     set +x
 
     if [ ${DEBUG:-0} -eq 1 ]; then
-	# make it easier to see errors in browsers that misguidedly
-	# try to show "friendly" error pages
-	echo "HTTP/1.0 200 OK" >&3
+        # make it easier to see errors in browsers that misguidedly
+        # try to show "friendly" error pages
+        echo "HTTP/1.0 200 OK" >&3
     else
-	echo "HTTP/1.0 500 OK" >&3
+        echo "HTTP/1.0 500 OK" >&3
     fi
 
     echo "Content-Type: text/plain" >&3
     echo -e "Connection: close\n\n" >&3
 
     if [ ${DEBUG:-0} -eq 1 ]; then
-	echo -e "You are seeing this because DEBUG is turned on.\n\n" >&3
-	cat ${LOGFILE} >&3
+        echo -e "You are seeing this because DEBUG is turned on.\n\n" >&3
+        cat ${LOGFILE} >&3
     else
-    	echo "Internal Error.  Sorry!" >&3
+        echo "Internal Error.  Sorry!" >&3
     fi
     exit 0
 }
 
 function exit_handler() {
     if [ $? -ne 0 ]; then
-	error_handler
+        error_handler
     fi
 
     set +x
@@ -141,11 +141,11 @@ function sm_lookup_by_value() {
 
     # if we don't have a value match, assign it and save
     if [ "${SM_CURRENT_BY_VALUE[${value}]-}" == "" ]; then
-	key=${SM_CURRENT_MAX}
-	SM_CURRENT_MAX=$(( SM_CURRENT_MAX + 1 ))
-	SM_CURRENT_BY_KEY[${key}]=${value}
-	SM_CURRENT_BY_VALUE[${value}]=${key}
-	sm_save
+        key=${SM_CURRENT_MAX}
+        SM_CURRENT_MAX=$(( SM_CURRENT_MAX + 1 ))
+        SM_CURRENT_BY_KEY[${key}]=${value}
+        SM_CURRENT_BY_VALUE[${value}]=${key}
+        sm_save
     fi
 
     _RETVAL=${SM_CURRENT_BY_VALUE[${value}]}
@@ -161,7 +161,7 @@ function sm_save() {
     rm ${tmpfile}
 
     for key in ${!SM_CURRENT_BY_KEY[@]}; do
-	echo "${key}:${SM_CURRENT_BY_KEY[${key}]}" >> ${tmpfile}
+        echo "${key}:${SM_CURRENT_BY_KEY[${key}]}" >> ${tmpfile}
     done
 
     mv ${tmpfile} ${mapfile}
@@ -176,7 +176,7 @@ function sm_load() {
 
     # load a key/value table into well-known globals
     if [ "${SM_CURRENT_DESCRIPTOR-}" == "${descriptor}" ]; then
-	return 0
+        return 0
     fi
 
     # otherwise, load the table
@@ -186,18 +186,18 @@ function sm_load() {
     SM_CURRENT_BY_VALUE=()
 
     if [ -e ${MAP_DIR}/${descriptor}.conf ]; then
-	while read line; do
-	    key=${line%:*}
-	    value=${line##*:}
+        while read line; do
+            key=${line%:*}
+            value=${line##*:}
 
-	    SM_CURRENT_BY_KEY[${key}]=${value}
-	    SM_CURRENT_BY_VALUE[${value}]=${key}
+            SM_CURRENT_BY_KEY[${key}]=${value}
+            SM_CURRENT_BY_VALUE[${value}]=${key}
 
-	    if (( key > SM_CURRENT_MAX )); then
-		SM_CURRENT_MAX=${key}
-	    fi
-	done < <(cat ${MAP_DIR}/${descriptor}.conf)
-	SM_CURRENT_MAX=$(( SM_CURRENT_MAX + 1 ))
+            if (( key > SM_CURRENT_MAX )); then
+                SM_CURRENT_MAX=${key}
+            fi
+        done < <(cat ${MAP_DIR}/${descriptor}.conf)
+        SM_CURRENT_MAX=$(( SM_CURRENT_MAX + 1 ))
     fi
 }
 
@@ -208,47 +208,47 @@ trap exit_handler EXIT
 # read headers
 while read line; do
     if [ ${#request[@]} -eq 0 ]; then
-	request=($line)
+        request=($line)
 
-	if [ ${#request[@]} -ne 3 ]; then
-	    echo ${request}
-	    error_handler
-	fi
+        if [ ${#request[@]} -ne 3 ]; then
+            echo ${request}
+            error_handler
+        fi
 
-	request_method=${request[0]}
-	full_path=${request[1]}
-	request_path=${full_path%%\?*}
-	request_query=""
+        request_method=${request[0]}
+        full_path=${request[1]}
+        request_path=${full_path%%\?*}
+        request_query=""
 
-	# FIXME: totally unsanitary
-	request_path=$(echo -e "$(echo "${request_path}" | sed 'y/+/ /; s/%/\\x/g')")
-	if [[ ${full_path} =~ "?" ]]; then
-	    request_query=${full_path##*\?}
-	fi
+        # FIXME: totally unsanitary
+        request_path=$(echo -e "$(echo "${request_path}" | sed 'y/+/ /; s/%/\\x/g')")
+        if [[ ${full_path} =~ "?" ]]; then
+            request_query=${full_path##*\?}
+        fi
 
-	echo "$(date "+%Y-%m-%d %H:%M:%S") ${request_path}" >> /var/log/api-server.log
-	declare -a kvpairs=()
+        echo "$(date "+%Y-%m-%d %H:%M:%S") ${request_path}" >> /var/log/api-server.log
+        declare -a kvpairs=()
 
-	if [ ${#request_query} -gt 0 ]; then
-	    kvpairs=(${request_query//&/ })
-	    for pair in "${kvpairs[@]}"; do
-		key=${pair%%=*}
-		value=${pair##*=}
-	        # needs urldecode
-		request_args[${key}]=${value}
-	    done
-	fi
+        if [ ${#request_query} -gt 0 ]; then
+            kvpairs=(${request_query//&/ })
+            for pair in "${kvpairs[@]}"; do
+                key=${pair%%=*}
+                value=${pair##*=}
+                # needs urldecode
+                request_args[${key}]=${value}
+            done
+        fi
     else
-	if [ "${line}" == "" ] || [ "${line}" == $'\r' ]; then
-	    break;
-	fi
+        if [ "${line}" == "" ] || [ "${line}" == $'\r' ]; then
+            break;
+        fi
 
-	header_value=${line#*:}
-	header_name=${line%%:*}
+        header_value=${line#*:}
+        header_name=${line%%:*}
 
-	header_value="${header_value#+([[:space:]])}"
-	header_value="${header_value%+([$'\r'$'\n'])}"
-	request_headers[${header_name,,}]="${header_value}"
+        header_value="${header_value#+([[:space:]])}"
+        header_value="${header_value%+([$'\r'$'\n'])}"
+        request_headers[${header_name,,}]="${header_value}"
     fi
 done
 
@@ -274,26 +274,26 @@ post_info=()
 
 while ( /bin/true ); do
     if (! echo "${d}" | grep -q "^${BASE_DIR}"); then
-	response "400 Bad Request" "text/plain" "Bad Path"
-	exit 1
+        response "400 Bad Request" "text/plain" "Bad Path"
+        exit 1
     fi
 
     if [ -f ${d} ]; then
-	source ${d}
-	break;
+        source ${d}
+        break;
     elif [ -f ${d}/default ]; then
-	source ${d}/default
-	break;
+        source ${d}/default
+        break;
     else
-	post_info[${#post_info[@]}]=$(basename ${d})
-	d=$(dirname ${d})
+        post_info[${#post_info[@]}]=$(basename ${d})
+        d=$(dirname ${d})
     fi
 done
 
 if $(type "handle_request" 2>/dev/null | head -n1 | grep -q function); then
     handle_request
     if [ $? -ne 0 ]; then
-	response "500 Internal Server Error" "text/plain" "dispatch failed"
+        response "500 Internal Server Error" "text/plain" "dispatch failed"
     fi
 
     exit 0
@@ -301,4 +301,3 @@ fi
 
 
 response "404 Not Found" "text/plain" "Resource not found"
-

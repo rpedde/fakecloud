@@ -62,7 +62,7 @@ function have_sized_base {
     local size=${2}
 
     if [ -e ${LVM_DEVICE}/${distrelease}-${size} ]; then
-	return 0
+        return 0
     fi
 
     return 1

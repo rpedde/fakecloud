@@ -10,19 +10,16 @@ mnt=${3}
 
 case ${distrelease} in
     ubuntu*|debian*)
-	echo "Setting hostname..."
-	echo ${name} > ${mnt}/etc/hostname
-	;;
+        echo "Setting hostname..."
+        echo ${name} > ${mnt}/etc/hostname
+        ;;
     fedora*|centos*|rhel*)
-	echo "Setting hostname..."
-	if [ -e ${mnt}/etc/sysconfig/network ]; then
-	    sed -i ${mnt}/etc/sysconfig/network -e "s/HOSTNAME=.*/HOSTNAME=${name}/"
-	fi
-	;;
+        echo "Setting hostname..."
+        if [ -e ${mnt}/etc/sysconfig/network ]; then
+            sed -i ${mnt}/etc/sysconfig/network -e "s/HOSTNAME=.*/HOSTNAME=${name}/"
+        fi
+        ;;
     *)
-	echo "Skipping hostname.  Unknown distrelease"
-	;;
+        echo "Skipping hostname.  Unknown distrelease"
+        ;;
 esac
-
-
-

@@ -14,16 +14,16 @@ release=${distrelease##*-}
 case ${dist} in
     ubuntu)
         mirror=${UBUNTU_MIRROR:-http://mirror.rackspace.com}
-	cat > ${mnt}/etc/apt/sources.list.d/local.list <<EOF
+        cat > ${mnt}/etc/apt/sources.list.d/local.list <<EOF
 deb ${mirror}/${dist} ${release} main universe multiverse
 deb ${mirror}/${dist} ${release}-updates main universe multiverse
 EOF
 
         chroot ${mnt} apt-get update
-	;;
+        ;;
     *)
-	echo "Can't do that, boss"
-	;;
+        echo "Can't do that, boss"
+        ;;
 esac
 
 exit 0
