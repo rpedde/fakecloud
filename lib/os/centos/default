@@ -10,8 +10,6 @@ EXTRA_PACKAGES=${CENTOS_EXTRA_PACKAGES:-${EXTRA_PACKAGES}}
 function valid_images() {
     _RETVAL=""
     for release in {5..6}; do
-	_RETVAL+="centos-${release} "
+        _RETVAL+="centos-${release} "
     done
 }
-
-

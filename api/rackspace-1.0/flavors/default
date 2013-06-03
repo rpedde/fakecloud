@@ -13,14 +13,14 @@ function flavor_detail() {
 
     _RETVAL="{"
     for val in name ram disk; do
-	_RETVAL+="\"${val}\": "
-	local result="$(eval echo "\$flavor_${val}")"
-	if ( echo ${val} | grep -q ${string_vals} ); then
-	    result="\"${result}\""
-	fi
-	_RETVAL+=${result}
+        _RETVAL+="\"${val}\": "
+        local result="$(eval echo "\$flavor_${val}")"
+        if ( echo ${val} | grep -q ${string_vals} ); then
+            result="\"${result}\""
+        fi
+        _RETVAL+=${result}
 
-	_RETVAL+=", "
+        _RETVAL+=", "
     done
 
     _RETVAL+="\"id\": ${flavor_id}}"
@@ -30,35 +30,35 @@ function handle_request() {
     local response=""
 
     if [ ${#post_info[@]} -eq 0 ]; then
-	# all images
-	# FIXME: vars
-	flavor_list=$(ls /var/lib/spin/flavors/size)
+        # all images
+        # FIXME: vars
+        flavor_list=$(ls /var/lib/spin/flavors/size)
 
-	response="{ \"flavors\": ["
+        response="{ \"flavors\": ["
 
-	local first_flavor=1
-	for flavor in $flavor_list; do
-	    flavor_detail ${flavor}
-	    if [ ${first_flavor} -ne 1 ]; then
-		response+=", "
-	    fi
-	    first_flavor=0
-	    response+=${_RETVAL}
-	done
+        local first_flavor=1
+        for flavor in $flavor_list; do
+            flavor_detail ${flavor}
+            if [ ${first_flavor} -ne 1 ]; then
+                response+=", "
+            fi
+            first_flavor=0
+            response+=${_RETVAL}
+        done
 
-	response+="]}"
+        response+="]}"
     else
-	# single_flavor
-	sm_lookup_by_key "flavors" ${post_info[0]}
+        # single_flavor
+        sm_lookup_by_key "flavors" ${post_info[0]}
 
-	if [ "$_RETVAL" == "UNKNOWN" ]; then
-	    response "404 Not Found" "text/plain" "Not a valid flavor id"
-	fi
+        if [ "$_RETVAL" == "UNKNOWN" ]; then
+            response "404 Not Found" "text/plain" "Not a valid flavor id"
+        fi
 
-	response="{ \"flavor\":"
-	flavor_detail ${_RETVAL}
-	response+=${_RETVAL}
-	response+="]}"
+        response="{ \"flavor\":"
+        flavor_detail ${_RETVAL}
+        response+=${_RETVAL}
+        response+="]}"
     fi
 
     response_headers[content-type]="application/json"
@@ -66,6 +66,3 @@ function handle_request() {
     continue_response ${response}
     end_response
 }
-
-
-

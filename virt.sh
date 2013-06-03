@@ -5,13 +5,13 @@ _RETVAL=""
 function init() {
     # $1 - job file (if using a job file)
     if [ "${1-}" != "" ]; then
-	JOBFILE=${1-}
-	local basefile="$(dirname ${JOBFILE})/$(basename ${JOBFILE})"
-	LOGFILE="${basefile}.log"
-	STATUSFILE="${basefile}.status"
-	COMPLETEFILE="${basefile}.complete"
+        JOBFILE=${1-}
+        local basefile="$(dirname ${JOBFILE})/$(basename ${JOBFILE})"
+        LOGFILE="${basefile}.log"
+        STATUSFILE="${basefile}.status"
+        COMPLETEFILE="${basefile}.complete"
     else
-	LOGFILE=/tmp/fakecloud.log
+        LOGFILE=/tmp/fakecloud.log
     fi
 
     init_vars
@@ -22,9 +22,9 @@ function init() {
 
     mknod /tmp/zero-test-$$ c 1 5
     if ! dd if=/tmp/zero-test-$$ bs=512 count=1 of=/dev/zero; then
-	log "/tmp appears to be mounted nodev.  Exiting"
-	rm /tmp/zero-test-$$
-	exit 1
+        log "/tmp appears to be mounted nodev.  Exiting"
+        rm /tmp/zero-test-$$
+        exit 1
     fi
 
     rm /tmp/zero-test-$$
@@ -48,10 +48,10 @@ function update_status() {
     # $3 - message
 
     if [ "${JOBFILE-}" != "" ]; then
-	echo -e "STATE=${1}\nPERCENT=${2}\nMESSAGE=${3}" > ${STATUSFILE}
-	# this status file should be posted to upstream
-	# controller, if the job was initially obtained from
-	# an upstream controller
+        echo -e "STATE=${1}\nPERCENT=${2}\nMESSAGE=${3}" > ${STATUSFILE}
+        # this status file should be posted to upstream
+        # controller, if the job was initially obtained from
+        # an upstream controller
     fi
 }
 
@@ -70,8 +70,8 @@ function init_logs() {
 function init_vars() {
     # set up globals, read from config file, potentially
     if [ "${USER-}" != "root" ]; then
-	echo "Must be running as root (try sudo)."
-	exit 1
+        echo "Must be running as root (try sudo)."
+        exit 1
     fi
 
     REAL_USER=${USER:-}
@@ -103,11 +103,11 @@ function init_vars() {
     VIRT_TEMPLATE=${VIRT_TEMPLATE:-kvm}
 
     if [ -z "${SSH_KEY:-}" ]; then
-	if [ ! -z "${SUDO_USER:-}" ]; then
-	    SSH_KEY=/home/${SUDO_USER}/.ssh/id_*pub
-	else
-	    SSH_KEY=${HOME}/.ssh/id_[rd]sa.pub
-	fi
+        if [ ! -z "${SUDO_USER:-}" ]; then
+            SSH_KEY=/home/${SUDO_USER}/.ssh/id_*pub
+        else
+            SSH_KEY=${HOME}/.ssh/id_[rd]sa.pub
+        fi
     fi
 }
 
@@ -143,9 +143,9 @@ function log() {
 
 function log_debug {
     if [ "${DEBUG-}" != "" ]; then
-	log "$@"
+        log "$@"
     else
-	echo "$@"
+        echo "$@"
     fi
 }
 
@@ -162,10 +162,10 @@ function destroy_instance_by_name() {
 
     # destroy the disk
     if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
-	source "${BASE_DIR}/instances/${name}/${name}.vars"
-	source "${LIB_DIR}/disk/default"
-	source "${LIB_DIR}/disk/${DISK_FLAVOR}"
-	destroy_instance_disk "${name}"
+        source "${BASE_DIR}/instances/${name}/${name}.vars"
+        source "${LIB_DIR}/disk/default"
+        source "${LIB_DIR}/disk/${DISK_FLAVOR}"
+        destroy_instance_disk "${name}"
     fi
 
     rm -rf "${BASE_DIR}/instances/${name}"
@@ -178,23 +178,23 @@ function rekick_instance() {
     local was_running=0
 
     if (virsh list | grep -q ${name}); then
-	log "Terminating instance."
-	was_running=1
-	virsh destroy ${name}
+        log "Terminating instance."
+        was_running=1
+        virsh destroy ${name}
     fi
 
     if [ -e "${BASE_DIR}/instances/${name}/${name}.vars" ]; then
-	source "${BASE_DIR}/instances/${name}/${name}.vars"
-	source "${LIB_DIR}/disk/default"
-	source "${LIB_DIR}/disk/${DISK_FLAVOR}"
-	destroy_instance_disk "${name}"
+        source "${BASE_DIR}/instances/${name}/${name}.vars"
+        source "${LIB_DIR}/disk/default"
+        source "${LIB_DIR}/disk/${DISK_FLAVOR}"
+        destroy_instance_disk "${name}"
     else
-	return 1
+        return 1
     fi
 
     if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
-	log "No instance def for flavor ${flavor}"
-	return 1
+        log "No instance def for flavor ${flavor}"
+        return 1
     fi
 
     source ${BASE_DIR}/flavors/size/${flavor}
@@ -203,8 +203,8 @@ function rekick_instance() {
     run_plugins ${name} ${distrelease}
 
     if [ ${was_running} -eq 1 ]; then
-	log "Restarting instance"
-	virsh start ${name}
+        log "Restarting instance"
+        virsh start ${name}
     fi
 
     log "Done"
@@ -220,28 +220,28 @@ function spin_instance() {
     local distrelease=${3}
 
     function spin_instance_cleanup() {
-	log_debug "Cleaning up spin_instance()"
+        log_debug "Cleaning up spin_instance()"
 
-	if [ "${NOCLEAN-0}" -eq 1 ]; then
-	    log_debug "Not cleaning up spun instances"
-	else
-	    virsh destroy ${name}
-	    virsh undefine ${name}
-	    [ -e "${BASE_DIR}/instances/${name}" ] && rm -rf "${BASE_DIR}/instances/${name}"
-	fi
-	return 1
+        if [ "${NOCLEAN-0}" -eq 1 ]; then
+            log_debug "Not cleaning up spun instances"
+        else
+            virsh destroy ${name}
+            virsh undefine ${name}
+            [ -e "${BASE_DIR}/instances/${name}" ] && rm -rf "${BASE_DIR}/instances/${name}"
+        fi
+        return 1
     }
 
     maybe_make_default_flavors
 
     if [ -e "${BASE_DIR}/instances/${name}" ]; then
-	log "Instance already exists."
-	exit 1
+        log "Instance already exists."
+        exit 1
     fi
 
     if [ ! -e ${BASE_DIR}/flavors/size/${flavor} ]; then
-	log "No instance definition for flavor \"${flavor}\""
-	exit 1
+        log "No instance definition for flavor \"${flavor}\""
+        exit 1
     fi
 
     trap "spin_instance_cleanup; return 1" ERR SIGINT SIGTERM
@@ -252,9 +252,9 @@ function spin_instance() {
     [ -z "${NETWORK_FLAVOR:-}" ] && NETWORK_FLAVOR=$(brctl show | grep -v "bridge name" | cut -f1 | head -n1)
 
     if [ ! -e ${BASE_DIR}/flavors/network/${NETWORK_FLAVOR} ]; then
-	BRIDGE=${BRIDGE:-br0}
+        BRIDGE=${BRIDGE:-br0}
     else
-	source ${BASE_DIR}/flavors/network/${NETWORK_FLAVOR}
+        source ${BASE_DIR}/flavors/network/${NETWORK_FLAVOR}
     fi
 
     FLAVOR+=([bridge]=${BRIDGE})
@@ -280,7 +280,7 @@ function spin_instance() {
     # let's drop a descriptor file so we know what disk types, etc
     rm -f "${BASE_DIR}/instances/${name}/${name}.vars"
     for var in DISK_FLAVOR NETWORK_FLAVOR BRIDGE distrelease name flavor; do
-	typeset -p ${var} >> "${BASE_DIR}/instances/${name}/${name}.vars"
+        typeset -p ${var} >> "${BASE_DIR}/instances/${name}/${name}.vars"
     done
 
     # now, we have to generate the template xml...
@@ -296,31 +296,31 @@ function spin_instance() {
     virsh start ${name}
 
     if [ "${POST_INSTALL-}" != "" ]; then
-	log_debug "Waiting for instance spin-up..."
-	# wait for instance to spin up, then run post_install
-	count=0
-	while [ ${count} -lt 10 ]; do
-	    # wait for port 22
-	    count=$((count + 1))
-	    sleep 5
-	    if (nc ${name}.local 22 -w 1 -q 0 < /dev/null ); then
-		break;
-	    fi
-	done
-	sleep 5
+        log_debug "Waiting for instance spin-up..."
+        # wait for instance to spin up, then run post_install
+        count=0
+        while [ ${count} -lt 10 ]; do
+            # wait for port 22
+            count=$((count + 1))
+            sleep 5
+            if (nc ${name}.local 22 -w 1 -q 0 < /dev/null ); then
+                break;
+            fi
+        done
+        sleep 5
 
-	log_debug "Instance spun... starting postinstall script (${POST_INSTALL})"
+        log_debug "Instance spun... starting postinstall script (${POST_INSTALL})"
 
-	# 22 is open (or we died)
-	if [ -e ${POSTINSTALL_DIR}/${POST_INSTALL} ]; then
-	    log "Running post-install script ${POST_INSTALL}..."
-	    if ! ( ${POSTINSTALL_DIR}/${POST_INSTALL} ${name}.local ${distrelease} xx ); then
-		log "Error..."
-		handle_exit
-	    else
-		log "Success!"
-	    fi
-	fi
+        # 22 is open (or we died)
+        if [ -e ${POSTINSTALL_DIR}/${POST_INSTALL} ]; then
+            log "Running post-install script ${POST_INSTALL}..."
+            if ! ( ${POSTINSTALL_DIR}/${POST_INSTALL} ${name}.local ${distrelease} xx ); then
+                log "Error..."
+                handle_exit
+            else
+                log "Success!"
+            fi
+        fi
     fi
 }
 
@@ -333,14 +333,14 @@ function run_plugins() {
     local use_kpartx=0
 
     function run_plugins_cleanup() {
-	log_debug "Cleaning up run_plugins()"
+        log_debug "Cleaning up run_plugins()"
 
-	[ -e ${tmpdir}/mnt ] && umount ${tmpdir}/mnt
-	[ $use_kpartx -eq 1 ] && kpartx -d ${NBD_DEVICE}
-	qemu-nbd -d ${NBD_DEVICE}
-	[ -e /dev/mapper/$(basename ${NBD_DEVICE})p1 ] && dmsetup remove /dev/mapper/$(basename ${NBD_DEVICE})p1
-	rm -rf ${tmpdir}
-	return 1
+        [ -e ${tmpdir}/mnt ] && umount ${tmpdir}/mnt
+        [ $use_kpartx -eq 1 ] && kpartx -d ${NBD_DEVICE}
+        qemu-nbd -d ${NBD_DEVICE}
+        [ -e /dev/mapper/$(basename ${NBD_DEVICE})p1 ] && dmsetup remove /dev/mapper/$(basename ${NBD_DEVICE})p1
+        rm -rf ${tmpdir}
+        return 1
     }
     trap 'run_plugins_cleanup; return 1' ERR SIGINT SIGTERM
 
@@ -352,24 +352,24 @@ function run_plugins() {
     sleep 2
 
     if [ ! -e ${NBD_DEVICE}p1 ]; then
-	kpartx -a ${NBD_DEVICE}
-	use_kpartx=1
+        kpartx -a ${NBD_DEVICE}
+        use_kpartx=1
     fi
 
     if [ -e ${NBD_DEVICE}p1 ]; then
-	mount ${NBD_DEVICE}p1 ${tmpdir}/mnt
+        mount ${NBD_DEVICE}p1 ${tmpdir}/mnt
     else
-	# we'll fail and unmap if this doesn't exist
-	mount /dev/mapper/$(basename ${NBD_DEVICE})p1 ${tmpdir}/mnt
+        # we'll fail and unmap if this doesn't exist
+        mount /dev/mapper/$(basename ${NBD_DEVICE})p1 ${tmpdir}/mnt
     fi
 
     for plugin in $(ls ${PLUGIN_DIR} | sort); do
-	log_debug "Running plugin \"${plugin}\"..."
-	if ! ( /bin/bash -x ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt" > /tmp/plugins.log 2>&1 ); then
-	    log_debug "Plugin \"${plugin}\": failure"
-	else
-	    log_debug "Plugin \"${plugin}\": success"
-	fi
+        log_debug "Running plugin \"${plugin}\"..."
+        if ! ( /bin/bash -x ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt" > /tmp/plugins.log 2>&1 ); then
+            log_debug "Plugin \"${plugin}\": failure"
+        else
+            log_debug "Plugin \"${plugin}\": success"
+        fi
     done
 
     umount ${tmpdir}/mnt
@@ -407,29 +407,29 @@ function maybe_make_dist_image() {
     tmpdir=$(mktemp -d)
 
     function maybe_make_dist_image_cleanup() {
-	rm -rf ${tmpdir}
-	return 1
+        rm -rf ${tmpdir}
+        return 1
     }
 
     trap "maybe_make_dist_image_cleanup; return 1" SIGINT SIGTERM ERR
 
     for l in ${LIB_DIR}/os/{default,$dist/default,$dist/$release}; do
-	if [ -f $l ]; then
-	    log_debug "Sourcing $l"
-	    source $l
-	fi
+        if [ -f $l ]; then
+            log_debug "Sourcing $l"
+            source $l
+        fi
     done
 
     if [ ! -e ${BASE_DIR}/minibase ]; then
-	mkdir -p ${BASE_DIR}/minibase
+        mkdir -p ${BASE_DIR}/minibase
     fi
 
     log_debug "checking for dist image for ${1}"
     log_debug "Using: $(declare -f validate_image)"
     if ! validate_image ${1}; then
-	log "No valid dist image yet.  Creating."
-	log_debug "Using: $(declare -f make_dist_image)"
-	make_dist_image ${1}
+        log "No valid dist image yet.  Creating."
+        log_debug "Using: $(declare -f make_dist_image)"
+        make_dist_image ${1}
     fi
 }
 
@@ -438,16 +438,16 @@ function maybe_make_default_flavors() {
     # it if not
 
     if [ ! -e ${BASE_DIR}/flavors ]; then
-	mkdir -p ${BASE_DIR}/flavors
-	rsync -av ${EXAMPLE_DIR}/flavors/ ${BASE_DIR}/flavors/
+        mkdir -p ${BASE_DIR}/flavors
+        rsync -av ${EXAMPLE_DIR}/flavors/ ${BASE_DIR}/flavors/
 
         [ -e ${BASE_DIR}/flavors/network ] || mkdir ${BASE_DIR}/flavors/network
-	#default network flavor will handle this case in future
-	for bridge in $(brctl show | grep -v "bridge name" | cut -f1); do
-	    cat > ${BASE_DIR}/flavors/network/${bridge} <<EOF
+        #default network flavor will handle this case in future
+        for bridge in $(brctl show | grep -v "bridge name" | cut -f1); do
+            cat > ${BASE_DIR}/flavors/network/${bridge} <<EOF
 BRIDGE=${bridge}
 EOF
-	done
+        done
 
     fi
 }
@@ -468,7 +468,7 @@ function dispatch_file() {
     JOB_FILE=${file}
 
     if [ ! -e ${file} ]; then
-	return 0
+        return 0
     fi
 
     source ${file}
@@ -477,25 +477,24 @@ function dispatch_file() {
 
 function dispatch_job() {
     case $ACTION in
-	create)
-	    spin_instance ${NAME} ${FLAVOR-tiny} ${DISTRELEASE}
-	    ;;
-	destroy)
-	    destroy_instance_by_name $NAME
-	    ;;
-	reboot)
-	    virsh destroy ${NAME}
-	    virsh start ${NAME}
-	    ;;
-	stop)
-	    virsh destroy ${NAME}
-	    ;;
-	start)
-	    virsh start ${NAME}
-	    ;;
-	*)
-	    log "Bad command ${ACTION}"
-	    ;;
+        create)
+            spin_instance ${NAME} ${FLAVOR-tiny} ${DISTRELEASE}
+            ;;
+        destroy)
+            destroy_instance_by_name $NAME
+            ;;
+        reboot)
+            virsh destroy ${NAME}
+            virsh start ${NAME}
+            ;;
+        stop)
+            virsh destroy ${NAME}
+            ;;
+        start)
+            virsh start ${NAME}
+            ;;
+        *)
+            log "Bad command ${ACTION}"
+            ;;
     esac
 }
-
