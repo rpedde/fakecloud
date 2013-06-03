@@ -115,7 +115,7 @@ function expand_dist_to_sized_base() {
     make_raw_device ${distrelease} ${size} ${name}
     local rawfile=$_RETVAL
 
-    base_loop=$(losetup -vf ${rawfile} | awk '{ print $NF }')
+    base_loop=$(losetup --show -f ${rawfile})
     loop_basename=$(basename ${base_loop})
     log_debug "Partitioning..."
     parted ${base_loop} mklabel msdos mkpart primary 1m 100%
@@ -146,7 +146,7 @@ function expand_dist_to_sized_base() {
     mkfs.${fstype} -j /dev/mapper/${loop_basename}p1
 
     # reloop to make grub2 work
-    part_loop=$(losetup -vf /dev/mapper/${loop_basename}p1 | awk '{ print $NF }')
+    part_loop=$(losetup --show -f /dev/mapper/${loop_basename}p1)
     mkdir ${working}/mnt
     mount ${part_loop} ${working}/mnt
 
