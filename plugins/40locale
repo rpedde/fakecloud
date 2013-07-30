@@ -14,13 +14,11 @@ release=${distrelease##*-}
 case ${dist} in
     ubuntu)
         chroot ${mnt} locale-gen en_US.UTF-8
-	;;
+        ;;
     debian)
-	chroot ${mnt} /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y locales-all"
-	;;
+        chroot ${mnt} /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y locales-all"
+        ;;
     *)
-	echo "Can't do that, boss"
-	;;
+        echo "Can't do that, boss"
+        ;;
 esac
-
-

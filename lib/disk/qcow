@@ -42,9 +42,8 @@ function have_sized_base {
     local size=${2}
 
     if [ -e ${BASE_DIR}/base/${distrelease}-${size}.qcow2 ]; then
-	return 0
+        return 0
     fi
 
     return 1
 }
-

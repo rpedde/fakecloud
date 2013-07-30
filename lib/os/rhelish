@@ -16,7 +16,7 @@ function get_mirror() {
     reltype=release
 
     if [ "${dist}" == "fedora" ] && [ "${release}" == 17 ]; then
-	reltype=development
+        reltype=development
     fi
 
     _RETVAL=${FEDORA_MIRROR:-http://mirror.rackspace.com/${dist}/${reltype}/${release}/x86_64/os}
@@ -36,7 +36,7 @@ function pre_grub() {
     # functions, including get_mirror
     source ${LIB_DIR}/os/${dist}/default
     if [ -e ${LIB_DIR}/os/${dist}/${release} ]; then
-	source ${LIB_DIR}/os/${dist}/${release}
+        source ${LIB_DIR}/os/${dist}/${release}
     fi
 
     get_mirror ${dist} ${release}
@@ -56,7 +56,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-${dist}-x86_64
 EOF
 
     if [ -e ${mountpoint}/etc/selinux/config ]; then
-	sed -i ${mountpoint}/etc/selinux/config -e "s/SELINUX.*/SELINUX=disabled/"
+        sed -i ${mountpoint}/etc/selinux/config -e "s/SELINUX.*/SELINUX=disabled/"
     fi
 
     # FIXME: this is probably fedora > 17 specific
@@ -80,13 +80,13 @@ function post_grub() {
     chroot ${mountpoint} /bin/bash -c "yum install -y openssh-server avahi"
 
     for d in avahi-daemon.service sshd.service NetworkManager.service rsyslog.service; do
-	chroot ${mountpoint} /bin/bash -c "systemctl enable ${d}"
+        chroot ${mountpoint} /bin/bash -c "systemctl enable ${d}"
     done
 
     for d in {0..6}; do
-	if [ ! -e ${mountpoint}/etc/systemd/system/getty.target.wants/getty\@tty${d}.service ]; then
-	    ln -s "/usr/lib/systemd/system/getty\@.service" ${mountpoint}/etc/systemd/system/getty.target.wants/getty\@tty${d}.service
-	fi
+        if [ ! -e ${mountpoint}/etc/systemd/system/getty.target.wants/getty\@tty${d}.service ]; then
+            ln -s "/usr/lib/systemd/system/getty\@.service" ${mountpoint}/etc/systemd/system/getty.target.wants/getty\@tty${d}.service
+        fi
     done
 
     return 0

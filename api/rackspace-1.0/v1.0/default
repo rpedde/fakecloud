@@ -4,8 +4,8 @@ function handle_request() {
     mkdir -p ${TOKEN_DIR}
 
     if [[ ${request_headers[x-auth-user]:-} == "" ]] || \
-	[[ ${request_headers[x-auth-key]:-} = "" ]]; then
-	response "400 Bad Request" "text/plain" "Expecting x-auth-user and x-auth-key"
+        [[ ${request_headers[x-auth-key]:-} = "" ]]; then
+        response "400 Bad Request" "text/plain" "Expecting x-auth-user and x-auth-key"
     fi
 
     ENDPOINT=${request_headers[host]:-}

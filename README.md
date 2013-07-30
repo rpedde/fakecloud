@@ -32,30 +32,35 @@ maybe make a ~/.fakecloudrc with bash environment variables:
 
       # root password on default kicks.  Don't set for key-only
       ROOT_PASSWORD=secret
+      
+      # Which libvirt template to use
+      # Use "nestedkvm" and make sure you load your kvm_intel or kvm_amd
+      # model with nested=1 for nested virt.
+      VIRT_TEMPLATE="kvm"
 
 Use
 ---
 
-	# Kick an instance named "test-instance" with ubuntu 11.04
-	sudo fakecloud create test-instance ubuntu-natty
+    # Kick an instance named "test-instance" with ubuntu 11.04
+    sudo fakecloud create test-instance ubuntu-natty
 
-	# List all fakecloud instances and kvm states
-	sudo fakecloud list
+    # List all fakecloud instances and kvm states
+    sudo fakecloud list
 
-	# destroy the instance "test-instance" and clean up all qcow images
-	sudo fakecloud destroy test-instance
+    # destroy the instance "test-instance" and clean up all qcow images
+    sudo fakecloud destroy test-instance
 
 
 Advanced Use
 ------------
 
-	# kick a 11.04 instance and run the post-install script "kong" when complete
-	# also, show debugging logs
-	sudo fakecloud -d -pkong create test-instance ubuntu-natty
+    # kick a 11.04 instance and run the post-install script "kong" when complete
+    # also, show debugging logs
+    sudo fakecloud -d -pkong create test-instance ubuntu-natty
 
-	# kick a 10.10 instance using the default "small" flavor (12G disk,
-	# 1G ram, 1vcpu)
-	sudo fakecloud -fsmall create test-instance ubuntu-maverick
+    # kick a 10.10 instance using the default "small" flavor (12G disk,
+    # 1G ram, 1vcpu)
+    sudo fakecloud -fsmall create test-instance ubuntu-maverick
 
 This should probably work with ubuntu-maverick, ubuntu-natty, ubuntu-oneiric (if
 your debootstrap script understands it... otherwise just symlink oneiric to gutsy
@@ -71,6 +76,8 @@ Tips
 
 * make sure you have a bridge device up, as that's where your vnet device
 will get connected.
+
+* make sure the loop module is loaded with max_part=16
 
 Stuff to Do
 -----------

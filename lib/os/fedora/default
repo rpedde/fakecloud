@@ -10,7 +10,7 @@ EXTRA_PACKAGES=${FEDORA_EXTRA_PACKAGES:-${EXTRA_PACKAGES}}
 function valid_images() {
     _RETVAL=""
     for release in {10..17}; do
-	_RETVAL+="fedora-${release} "
+        _RETVAL+="fedora-${release} "
     done
 }
 
@@ -28,8 +28,5 @@ function bootstrap() {
     log "debootstrapping $dist-$release with mirror ${mirror}"
     # -i <extra>
     febootstrap -g Core -i sudo ${dist}-${release} \
-	${tmpdir}/mountpoint ${mirror}
+        ${tmpdir}/mountpoint ${mirror}
 }
-
-
-
