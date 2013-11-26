@@ -1,0 +1,28 @@
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+function log() {
+    echo -e "$@" >&3
+}
+
+log "Setting locale..."
+case ${distrelease} in
+    ubuntu*)
+        chroot ${mnt} locale-gen en_US.UTF-8
+        ;;
+    debian*)
+        chroot ${mnt} /bin/bash -c \
+            "DEBIAN_FRONTEND=noninteractive apt-get install -y locales-all"
+        ;;
+    *)
+        log "${0##*/}: Unsupported distrelease '$distrelease'."
+        exit 1
+        ;;
+esac
+
+# vim: set filetype=sh :

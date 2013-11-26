@@ -1,0 +1,49 @@
+# $1 - domain
+# $2 - distrelease
+# $3 - mountpoint
+
+domain=${1}
+distrelease=${2}
+mnt=${3}
+
+function log() {
+    echo -e "$@" >&3
+}
+
+EXTRA_USERS=${EXTRA_USERS:-""}
+
+log "Configuring users..."
+for user in ${SUDO_USER:-${USER}} ${EXTRA_USERS//,/ }; do
+    log " * creating user ${user}..."
+    if getent passwd ${user} &>/dev/null; then
+        pwhash=$(egrep "^${user}:" /etc/shadow | cut -d: -f2)
+    else
+        log " * (using password 'secrete')"
+        pwhash='$apr1$EhUZuv3v$0LMDkEit6RH60h9YNq9oy/'
+    fi
+
+    if [ ${user} == "root" ]; then
+        chroot ${mnt} usermod -p "${pwhash}" root
+        remote_home=/root
+    else
+        chroot ${mnt} useradd -s /bin/bash -m -p "${pwhash}" \
+            -G root,adm,sudo,games,users ${user}
+        remote_home=/home/${user}
+    fi
+
+    # If there's a local user by this name, see if he has ssh keys
+    if getent passwd ${user} &>/dev/null; then
+        local_home=$(getent passwd $user |cut -f6 -d:)
+        if [ -d ${local_home}/.ssh ]; then
+            log " * injecting SSH keys..."
+            mkdir ${mnt}/${remote_home}/.ssh
+            chmod 700 ${mnt}/${remote_home}/.ssh
+            cat ${local_home}/.ssh/id*pub >> \
+                ${mnt}/${remote_home}/.ssh/authorized_keys
+            chmod 600 ${mnt}/${remote_home}/.ssh/*
+            chroot ${mnt} chown -R ${user}: ${remote_home}/.ssh
+        fi
+    fi
+done
+
+# vim: set filetype=sh :

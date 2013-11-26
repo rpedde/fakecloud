@@ -1,0 +1,41 @@
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+dist=${distrelease%%-*}
+release=${distrelease##*-}
+
+function log() {
+    echo -e "$@" >&3
+}
+
+case ${dist} in
+    ubuntu)
+        mirror=${UBUNTU_MIRROR:-http://mirror.rackspace.com}
+
+        #if grep -qF $mirror ${mnt}/etc/apt/sources.list; then
+        #    # comment out duplicate mirror
+        #    sed -i "s%\\(.*${mirror}.*\\)%#\\1%" ${mnt}/etc/apt/sources.list
+        #fi
+        cat /dev/null > ${mnt}/etc/apt/sources.list
+
+        log "Adding mirrors to sources.list..."
+        cat > ${mnt}/etc/apt/sources.list.d/local.list <<EOF
+deb ${mirror}/${dist} ${release} main universe multiverse
+deb ${mirror}/${dist} ${release}-updates main universe multiverse
+EOF
+
+        log "Running apt-get update..."
+        chroot ${mnt} apt-get update
+        ;;
+    *)
+        log "${0##*/}: Unsupported distrelease '$distrelease'."
+        exit 1
+        ;;
+esac
+
+# vim: set filetype=sh :

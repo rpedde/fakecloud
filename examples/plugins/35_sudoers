@@ -1,0 +1,32 @@
+# $1 - domain
+# $2 - distrelease
+# $3 - mountpoint
+
+domain=${1}
+distrelease=${2}
+mnt=${3}
+
+sudoers_entry="%sudo	ALL=(ALL) NOPASSWD: ALL"  # <-- hard tab there!
+
+function log() {
+    echo -e "$@" >&3
+}
+
+log "Updating /etc/sudoers..."
+case ${distrelease} in
+    ubuntu*|debian*)
+        # modify existing group entry for ubuntu
+        sed -i "s/^%sudo.*/$sudoers_entry/" ${mnt}/etc/sudoers
+        ;;
+
+    centos*|rhel*)
+        # add new entry for centos
+        echo "$sudoers_entry" >> ${mnt}/etc/sudoers
+        ;;
+    *)
+        log "${0##*/}: Unknown distrelease '$distrelease'."
+        exit 1
+        ;;
+esac
+
+# vim: set filetype=sh :

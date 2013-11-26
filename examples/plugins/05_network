@@ -1,0 +1,58 @@
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+set +x
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+function log() {
+    echo -e "$@" >&3
+}
+
+log "Removing udev persistent net rules..."
+if [ -e ${mnt}/etc/udev/rules.d/70-persistent-net.rules ]; then
+    rm -f ${mnt}/etc/udev/rules.d/70-persistent-net.rules
+fi
+
+log "Configuring DHCP for eth0..."
+case ${distrelease} in
+    ubuntu*|debian*)
+        cat > ${mnt}/etc/network/interfaces <<EOF
+auto lo eth0 eth1
+iface lo inet loopback
+
+allow-hotplug eth0
+iface eth0 inet dhcp
+
+allow-hotplug eth1
+iface eth1 inet manual
+    pre-up ip link set \$IFACE up
+    post-down ip link set \$IFACE down
+EOF
+        ;;
+
+    centos*|rhel*|fedora*)
+        cat > ${mnt}/etc/sysconfig/network-scripts/ifcfg-eth0 <<EOF
+NM_CONTROLLED=yes
+BOOTPROTO=dhcp
+DEVICE=eth0
+ONBOOT=yes
+EOF
+        cat > ${mnt}/etc/sysconfig/network-scripts/ifcfg-eth1 <<EOF
+NM_CONTROLLED=no
+BOOTPROTO=static
+DEVICE=eth1
+ONBOOT=yes
+EOF
+        ;;
+
+    *)
+        log "${0##*/}: Unknown distrelease '$distrelease'."
+        exit 1
+        ;;
+esac
+
+# vim: set filetype=sh :
