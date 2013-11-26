@@ -1,0 +1,36 @@
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+function log() {
+    echo -e "$@" >&3
+}
+
+log "Setting hostname..."
+case ${distrelease} in
+    ubuntu*|debian*)
+        echo ${name} > ${mnt}/etc/hostname
+        ;;
+    fedora*|centos*|rhel*)
+        if [ ! -e ${mnt}/etc/sysconfig/network ]; then
+            # febootstrap doesn't do this.  d'oh!
+            cat > ${mnt}/etc/sysconfig/network <<EOF
+NETWORKING=yes
+HOSTNAME=${name}
+EOF
+        else
+            sed -i "s/^HOSTNAME=.*/HOSTNAME=${name}/" \
+                ${mnt}/etc/sysconfig/network 
+        fi
+        ;;
+    *)
+        log "${0##*/}: Unsupported distrelease '$distrelease'."
+        exit 1
+        ;;
+esac
+
+# vim: set filetype=sh :

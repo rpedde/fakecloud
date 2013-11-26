@@ -1,0 +1,32 @@
+# $1 - vm name
+# $2 - distrelease
+# $3 - root mount
+
+domain=$1
+distrelease=$2
+mnt=$3
+
+function log() {
+    echo -e "$@" >&3
+}
+
+if [ -z "${DOTFILES_DIR-}" ]; then
+    log "${0##*/}: You must define the following in ~/.fakecloudrc:"
+    log " * export DOTFILES_DIR=/some/path"
+    exit 1
+fi
+
+log "Copying dotfiles to user directories..."
+
+shopt -s dotglob
+export GLOBIGNORE=_ # anything non-null causes `.' and `..' to be ignored
+
+EXTRA_USERS=${EXTRA_USERS:-""}
+for user in ${SUDO_USER:-${USER}} ${EXTRA_USERS//,/ }; do
+    [ ${user} == "root" ] && continue
+    cp -vLr ${DOTFILES_DIR}/* ${mnt}/home/${user}
+    chown -R $user: ${mnt}/home/${user}
+done
+cp -vLr ${DOTFILES_DIR}/* ${mnt}/root
+
+# vim: set filetype=sh :

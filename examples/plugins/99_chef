@@ -1,0 +1,64 @@
+# $1 - vm name
+# $2 - distrelease
+# $3 - root mount
+
+domain=$1
+distrelease=$2
+mnt=$3
+
+CHEF_HOSTNAME=${CHEF_HOSTNAME:-chef}
+
+#set -e  # does this break fakecloud signal trapping?
+
+function log() {
+    echo -e "$@" >&3
+}
+
+#case $distrelease in
+#    ubuntu*|debian*)
+#        service=ssh
+#        ;;
+#    centos*|rhel*|fedora*)
+#        service=sshd
+#        ;;
+#    *)
+#        exit 1
+#        ;;
+#esac
+
+if [ -z "${CHEF_CONFIG_DIR-}" ]; then
+    log "${0##*/}: You must define the following in ~/.fakecloudrc:"
+    log " * export CHEF_CONFIG_DIR=/some/path"
+    exit 1
+fi
+
+log "Installing Chef client..."
+#chroot ${mnt} apt-get install -y curl
+#url=${OPSCODE_URL:-http://opscode.com/chef/install.sh}
+#chroot ${mnt} /bin/bash -c "curl -SsL $url | /bin/bash"
+cp ${CHEF_CONFIG_DIR}/*.deb ${mnt}/root
+chroot ${mnt} /bin/bash -c "dpkg -i /root/chef*.deb" # need bash for glob
+
+# TODO templatize/make generic
+cp -rL ${CHEF_CONFIG_DIR}/.chef/ ${mnt}/root
+echo "node_name                '${domain}'" >> ${mnt}/root/.chef/knife.rb
+
+log "Trying to find chef server IP..."
+# This is hokey, but dig(1) and host(1) won't use /etc/hosts by default,
+# so just ping the name to resolve it.
+chef_ip=$(ping -c1 -l1 -W1 $CHEF_HOSTNAME \
+    |awk '/^PING/ { print gensub(/\(|\)/, "","g",$3) }')
+
+chef_ip=${chef_ip:-127.0.0.1}   # if NX, output goes to stderr
+log " * using $chef_ip"
+echo "$chef_ip      chef" >> ${mnt}/etc/hosts
+
+mkdir ${mnt}/root/bootstrap
+cp ${CHEF_CONFIG_DIR}/chef-validator.pem ${mnt}/root/bootstrap
+chroot ${mnt} knife configure client /etc/chef
+
+if [ -d ${CHEF_CONFIG_DIR}/bin ]; then
+    cp ${CHEF_CONFIG_DIR}/bin/* ${mnt}/usr/local/bin
+fi
+
+# vim: set filetype=sh :

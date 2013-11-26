@@ -58,15 +58,26 @@ function require() {
     fi
 }
 
+function check_environment() {
+    # $PATH
+    for path in /bin /sbin /usr/bin /usr/sbin; do
+        if ! echo $PATH | tr : "\n" |grep -x $path
+        then
+            export PATH=$PATH:$path
+        fi
+    done
+}
+
 function usage() {
-    echo -e "${prog} [command] [args]\n"
+    echo -e "${prog} [options] [command]\n"
     echo "Valid commands:"
     echo "  create [name] [distrelease]"
+    echo "  rekick [name]"
     echo "  destroy [name]"
     echo "  list"
     echo "  reboot [name]"
     echo -e "\n"
-    echo "Valid args:"
+    echo "Valid options:"
     echo "  -d           enable debug"
     echo "  -f [flavor]  create instance using flavor"
     echo "  -h [hints]   create using specified hints"
@@ -142,6 +153,8 @@ case $action in
 
             distrelease=${DISTRELEASE-ubuntu-natty}
         fi
+
+        check_environment
 
         log "Spinning instance named \"${name}\" as ${distrelease}"
         spin_instance ${name} ${FLAVOR-tiny} ${distrelease}

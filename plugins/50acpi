@@ -11,11 +11,21 @@ mnt=${3}
 dist=${distrelease%%-*}
 release=${distrelease##*-}
 
+apt_cmd='DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated'
+
 case ${dist} in
     ubuntu|debian)
-        chroot ${mnt} /bin/bash -c "DEBIAN_FRONTEND=noninteractive apt-get install -y acpid"
+        # Enable ACPI PCI hotplugging if needed
+        if [ -e ${mnt}/etc/modules ]; then
+            if grep -qx 'CONFIG_HOTPLUG_PCI_ACPI=m' \
+                ${mnt}/boot/config-*-generic; then
+                echo acpiphp >> ${mnt}/etc/modules
+            fi
+        fi
+        chroot ${mnt} /bin/bash -c "$apt_cmd install acpid"
         ;;
     *)
         echo "Can't do that, boss"
+        exit 1
         ;;
 esac

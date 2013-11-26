@@ -1,0 +1,28 @@
+# $1 - vm name
+# $2 - distrelease
+# $3 - root mount
+
+#################################################
+exit 0 ### DISABLED ############################
+#################################################
+
+domain=$1
+distrelease=$2
+mnt=$3
+
+case $distrelease in
+    ubuntu*|debian*)
+        service=ssh
+        ;;
+    centos*|rhel*|fedora*)
+        service=sshd
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+
+sed -ri 's/^#?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+service ${service} restart
+
+# vim: set filetype=sh :

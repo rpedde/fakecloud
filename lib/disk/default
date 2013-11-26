@@ -1,5 +1,7 @@
 #!/bin/bash
 
+_BIND_MOUNTS=(/dev /dev/pts /sys /proc)
+
 function destroy_instance_disk() {
     # $1 - name
     #
@@ -15,6 +17,50 @@ function get_instance_disk() {
     _RETVAL="${BASE_DIR}/instance/${name}.disk"
 }
 
+function bind_chroot() {
+    # $1 path to chroot
+    local chroot=${1}
+
+    # bind-mount virtual filesystems
+    for mount in "${_BIND_MOUNTS[@]}"; do
+        if findmnt ${mount} >/dev/null; then
+            mkdir -p ${chroot}/${mount}
+            mount --bind ${mount} ${chroot}/${mount}
+        fi
+    done
+}
+
+function unbind_chroot() {
+    # $1 path to chroot
+    local chroot=${1}
+
+    # go through the mount points backwards and unmount them
+    for ((i=${#_BIND_MOUNTS[@]}-1; i>=0; i--)); do
+        if findmnt ${chroot}/${_BIND_MOUNTS[$i]} >/dev/null; then
+            umount ${chroot}/${_BIND_MOUNTS[$i]}
+        fi
+    done
+}
+
+# wait around for a device path to show up
+#
+function wait_for_device() {
+    # $1 device path
+    # $2 max number of seconds to wait
+    # $3 exit non-fatally
+    local device=$1
+    local timer=${2:-5}
+    local fatal=${3:-fatal}
+
+    local i=0
+    for ((i; i<${timer}; i++)); do
+        [ -e $device ] && return 0
+        sleep 1
+    done
+
+    [ $fatal = nonfatal ] && return 0
+    return 1
+}
 
 # see if there is a disk image already of this size, if so
 # qcow it, otherwise make a new one and qcow *that*
@@ -30,6 +76,13 @@ function make_bootable_drive() {
 
     log_debug "Making bootable drive"
 
+    function make_bootable_drive_cleanup() {
+        log_debug "cleaning up make_bootable_drive()"
+        return 1
+    }
+
+    trap 'make_bootable_drive_cleanup; return 1' SIGINT SIGTERM ERR
+
     if [ ! -e ${BASE_DIR}/instances ]; then
         mkdir -p ${BASE_DIR}/instances
     fi
@@ -42,6 +95,8 @@ function make_bootable_drive() {
         exit 1
     fi
 
+    # FIXME When expand_dist_to_sized_base() fails, make_cow_from_sized_base()
+    # is still called (ie., the script is not stopped)! Why does this happen?
     expand_dist_to_sized_base ${distrelease} ${size}
     make_cow_from_sized_base ${distrelease} ${size} ${name}
 }
@@ -95,9 +150,12 @@ function expand_dist_to_sized_base() {
     working=$(mktemp -d)
 
     function expand_dist_to_sized_base_cleanup() {
+        if [ "${NOCLEAN:-0}" -eq 1 ]; then
+            log_debug "not cleaning up loopback devices or mounts"
+            return 1
+        fi
         log_debug "cleaning up expand_dist_to_sized_base()"
-        umount ${working}/mnt/dev
-        umount ${working}/mnt/proc
+        unbind_chroot ${working}/mnt
         umount ${working}/mnt
         [ "${part_loop-}" != "" ] && losetup -d ${part_loop}
         [ "${base_loop-}" != "" ] && kpartx -d ${base_loop}
@@ -111,19 +169,18 @@ function expand_dist_to_sized_base() {
     trap 'expand_dist_to_sized_base_cleanup; return 1' SIGINT SIGTERM ERR
 
     log_debug "Creating raw image..."
-
     make_raw_device ${distrelease} ${size} ${name}
     local rawfile=$_RETVAL
 
-    base_loop=$(losetup --show -f ${rawfile})
-    loop_basename=$(basename ${base_loop})
     log_debug "Partitioning..."
+    base_loop=$(losetup --show -f ${rawfile})
     parted ${base_loop} mklabel msdos mkpart primary 1m 100%
-    kpartx -a ${base_loop}
+    kpartx -av ${base_loop}
+    base_part=/dev/mapper/$(basename $base_loop)p1
+    wait_for_device ${base_part} 5    # give it a max of 5 seconds to show up
+
     log_debug "Formatting..."
-
     local fstype=ext3
-
     case ${dist} in
         ubuntu)
             package=linux-image-generic
@@ -143,10 +200,10 @@ function expand_dist_to_sized_base() {
             return 1
     esac
 
-    mkfs.${fstype} -j /dev/mapper/${loop_basename}p1
+    mkfs.${fstype} -j ${base_part}
 
     # reloop to make grub2 work
-    part_loop=$(losetup --show -f /dev/mapper/${loop_basename}p1)
+    part_loop=$(losetup --show -f ${base_part})
     mkdir ${working}/mnt
     mount ${part_loop} ${working}/mnt
 
@@ -155,23 +212,20 @@ function expand_dist_to_sized_base() {
     tar -xvzf ${BASE_DIR}/minibase/${1}.tar.gz -C ${working}/mnt
     mkdir -p ${working}/mnt/boot
 
-
     # This is safe for everyone...
     if [ -e ${working}/mnt/etc/resolv.conf ]; then
         cp /etc/resolv.conf ${working}/mnt/etc/resolv.conf
     fi
 
-    pre_grub ${dist} ${release} ${working}/mnt
-
-    mount --bind /dev ${working}/mnt/dev
-    mount --bind /proc ${working}/mnt/proc
+    # bind-mount virtual filesystems
+    bind_chroot ${working}/mnt
 
     log_debug "Yet another apt-get update..."
     get_update_packagelist_command ${dist} ${release}
     chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
 
     if [ "${EXTRA_PACKAGES-}" != "" ]; then
-        packages=${EXTRA_PACKAGES//,/ }
+        packages=${EXTRA_PACKAGES//,/ }  # global replace commas with spaces
         log_debug "Installing kernel and extra packages..."
         get_install_package_command ${dist} ${release} ${packages} ${package}
         chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
@@ -179,6 +233,8 @@ function expand_dist_to_sized_base() {
 
     get_install_package_command ${dist} ${release} ${grub_package}
     chroot ${working}/mnt /bin/bash -c "${_RETVAL}"
+
+    pre_grub ${dist} ${release} ${working}/mnt
 
     log_debug "Grubbing..."
     mkdir -p ${working}/mnt/boot/grub
@@ -204,24 +260,37 @@ EOF
 
     # is this crazy? WARNING!
     if [[ "fedora-17 debian-wheezy" =~ "${dist}-${release}" ]]; then
-        # this seems mildly dangerous, and possibly screwing up grub in the guest.  Seems to work.  ish.
-        # if only grub2 didn't suck so badly.  maybe syslinux?
+        # this seems mildly dangerous, and possibly screwing up grub in the
+        # guest.  Seems to work.  ish.  if only grub2 didn't suck so badly.
+        # maybe syslinux?
 
-        # since we're grubbing from the external system, match up the grub stuff
-        # with the exernal system's grub.
+        # since we're grubbing from the external system, match up the grub
+        # stuff with the exernal system's grub.
         if [ "${grubdir}" != /boot/grub ]; then
             cp ${working}/mnt/${grubdir}/grub.cfg ${working}/mnt/boot/grub/grub.cfg
             grubdir=/boot/grub
         fi
 
-        if [ ! /usr/sbin/grub-probe --device-map=${working}/mnt/boot/grub/device.map --target=fs -v ${working}/mnt/boot/grub ]; then
+        if [ ! /usr/sbin/grub-probe \
+            --device-map=${working}/mnt/boot/grub/device.map \
+            --target=fs -v ${working}/mnt/boot/grub ]
+        then
             log "grub-probe failed... this might be bad"
         fi
 
-        /usr/sbin/grub-install --no-floppy --grub-mkdevicemap=${working}/mnt/boot/grub/device.map --root-directory=${working}/mnt ${base_loop}
+        /usr/sbin/grub-install \
+            --grub-mkdevicemap=${working}/mnt/boot/grub/device.map \
+            --root-directory=${working}/mnt \
+            --no-floppy \
+            ${base_loop}
 
     else
-        chroot ${working}/mnt ${mkinstall} --no-floppy --grub-mkdevicemap=/boot/grub/device.map --root-directory=/ ${base_loop}
+        chroot ${working}/mnt \
+            ${mkinstall} \
+            --grub-mkdevicemap=/boot/grub/device.map \
+            --root-directory='/' \
+            --no-floppy \
+            ${base_loop}
     fi
 
     # turn off stupid quiet booting (ubuntu, fedora... I'm looking at you)
@@ -233,10 +302,12 @@ EOF
         # fedora wants to mount root fs read only... strange...
         sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/ ro / rw /'
 
-        # grub seems to lately be aware of loopback devices.  We might do better just to completely rewrite the grub
-        # config, but we'll keep munging it.
-#       loopback loop1 /mapper/loop0p1
-#       set root=(loop1)
+        # grub seems to lately be aware of loopback devices.  We might do
+        # better just to completely rewrite the grub config, but we'll keep
+        # munging it.
+        #
+        #   loopback loop1 /mapper/loop0p1
+        #   set root=(loop1)
 
         sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*loopback.*$//'
         sed -i ${working}/mnt/${grubdir}/grub.cfg -e 's/^.*set root=(loop1).*$//'
@@ -249,8 +320,8 @@ EOF
 
     post_grub ${dist} ${release} ${working}/mnt
 
-    umount ${working}/mnt/dev
-    umount ${working}/mnt/proc
+    # unmount everything and delete loopbacks
+    unbind_chroot ${working}/mnt
     umount ${working}/mnt
     losetup -d ${part_loop}
     sleep 1

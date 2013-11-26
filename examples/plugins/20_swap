@@ -1,0 +1,14 @@
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+echo "Creating swap file..." >&3
+fallocate -l 1G ${mnt}/swap || dd if=/dev/zero of=${mnt}/swap bs=4M count=256
+time mkswap ${mnt}/swap
+echo '/swap  none  swap  defaults  0 0' >> ${mnt}/etc/fstab
+
+# vim: set filetype=sh :

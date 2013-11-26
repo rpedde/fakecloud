@@ -1,4 +1,5 @@
 # -*- mode: shell-script -*-
+# vim: set ft=sh:
 
 function valid_images() {
     _RETVAL=""
@@ -81,8 +82,8 @@ function bootstrap() {
     local tmpdir=$4
 
     log "debootstrapping $dist-$release with mirror ${mirror}"
-    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo ${release} \
-        ${tmpdir}/mountpoint ${mirror}
+    debootstrap --include=openssh-server,avahi-daemon,libnss-mdns,sudo \
+        ${release} ${tmpdir}/mountpoint ${mirror}
 }
 
 function customize_passwd() {
@@ -91,7 +92,8 @@ function customize_passwd() {
 
     if [ -x ${tmpdir}/mountpoint/usr/sbin/chpasswd ]; then
         if [ "${ROOT_PASSWORD-}" != "" ]; then
-            chroot ${tmpdir}/mountpoint /bin/bash -c "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
+            chroot ${tmpdir}/mountpoint /bin/bash -c \
+                "echo root:${ROOT_PASSWORD} | /usr/sbin/chpasswd root"
         fi
     fi
 }
