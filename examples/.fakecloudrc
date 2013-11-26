@@ -1,0 +1,56 @@
+# vim: set ft=sh :
+# where to throw base images and libvirt xml templates &c
+BASE_DIR=/data/fakecloud
+
+# don't destroy the vm when something fails
+#NOCLEAN=1
+
+# where to look for lexically sorted first-boot actions on
+# not-yet-live machine (see examples in plugins)
+PLUGIN_DIR=${BASE_DIR}/plugins
+
+# where to look for scripts to run after machine is running
+# (see examples in post-install), as directed with -p option
+# on create.
+#POSTINSTALL_DIR=${BASE_DIR}/post-install
+
+# extra packages you want installed on all vms that get spun
+export UBUNTU_EXTRA_PACKAGES=vim,tmux,dnsutils,pciutils,acpid,\
+tcpdump,man,curl,tree,strace,lsof,iptables,ebtables,lynx,mlocate
+
+# root password on default kicks.  Don't set for key-only
+#ROOT_PASSWORD=secret
+
+# Which libvirt template to use
+# Use "nestedkvm" and make sure you load your kvm_intel or kvm_amd
+# model with nested=1 for nested virt.
+VIRT_TEMPLATE="nestedkvm"
+
+# Default bridge to use for eth0
+export BRIDGE=virbr0
+
+# Additional bridges to create vnics in
+export EXTRA_NICS=virbr1
+
+# Create the following users and scrape their passwords and keys from local
+# machine if they exist.
+#
+# (This will be done for $SUDO_USER by default if $EXTRA_USERS is unset)
+#
+#export EXTRA_USERS=luser,toor
+
+if grep -wq /var/spool/apt-mirror /proc/mounts; then
+    export UBUNTU_MIRROR=http://router/mirror/mirror.rackspace.com
+fi
+
+#export SWIFTRC=/home/duck/.swiftrc
+#export CF_CONTAINER=bc-bitbucket
+#export CF_TGZ_FILE=bootstrap.tar.gz
+
+# Directory for dotfiles that will be copied to all users' home directories
+export DOTFILES_DIR=${BASE_DIR}/dotfiles
+
+# Chef plugin stuff
+export CHEF_CONFIG_DIR=/data/fakecloud/chef
+export OPSCODE_URL=http://opscode.com/chef/install.sh
+
