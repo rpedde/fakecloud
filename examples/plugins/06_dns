@@ -1,0 +1,46 @@
+# $1 - domain
+# $2 - distrelease
+# $3 - mountpoint
+
+vm_name=${1}
+distrelease=${2}
+mnt=${3}
+
+function log() {
+    echo -e "$@" >&3
+}
+
+BRIDGE=${BRIDGE:-br0}
+log "Trying to find gateway IP for network on ${BRIDGE}..."
+
+for net in $(virsh -qr net-list |awk '{print $1}'); do
+    if virsh net-info $net |grep '^Bridge:' |grep -qw ${BRIDGE}; then
+        r_ip=$(virsh net-dumpxml nat_dhcp |grep 'ip address=' |cut -f2 -d"'")
+        [ -n "$r_ip" ] && break
+    fi
+done
+
+router_ip=${r_ip:-127.0.0.1}
+log " * using $router_ip"
+
+log "Creating /etc/hosts..."
+cat > ${mnt}/etc/hosts <<EOF
+127.0.0.1       localhost
+127.0.1.1       ${vm_name}
+
+$router_ip      router
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+EOF
+
+log "Creating /etc/resolv.conf..."
+# blow away resolvconf symlink
+[ -L ${mnt}/etc/resolv.conf ] && rm -f ${mnt}/etc/resolv.conf
+echo nameserver 8.8.8.8 > ${mnt}/etc/resolv.conf
+
+# vim: set filetype=sh :

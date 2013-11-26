@@ -1,0 +1,36 @@
+# $1 - name
+# $2 - distrelease
+# $3 - mountpoint
+
+name=${1}
+distrelease=${2}
+mnt=${3}
+
+apt_cmd='DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated'
+
+function log() {
+    echo -e "$@" >&3
+}
+
+log "Configuring ACPI..."
+case ${distrelease} in
+    ubuntu*|debian*)
+        # enable ACPI PCI hotplugging if needed.
+        # can't inspect /sys or /proc since we're not running yet,
+        # so just go for it...
+        if grep -qx 'CONFIG_HOTPLUG_PCI_ACPI=m' ${mnt}/boot/config-*; then
+            if ! grep -qs '^[ \t]*acpiphp[ \t]*$' ${mnt}/etc/modules; then
+                log " * configuring acpiphp module to autoload"
+                echo acpiphp >> ${mnt}/etc/modules
+            fi
+        fi
+        log " * installing acpid package"
+        chroot ${mnt} /bin/bash -c "$apt_cmd install acpid"
+        ;;
+    *)
+        log "${0##*/}: Unsupported distrelease '$distrelease'."
+        exit 1
+        ;;
+esac
+
+# vim: set filetype=sh :

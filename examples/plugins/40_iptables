@@ -1,0 +1,18 @@
+# $1 - vm name
+# $2 - distrelease
+# $3 - root mount
+
+domain=$1
+distrelease=$2
+mnt=$3
+
+case $distrelease in
+    centos*|rhel*|fedora*)
+        echo "Disabling iptables..." >&3
+        service iptables stop
+        chkconfig iptables off
+        ;;
+esac
+
+# vim: set filetype=sh :
+

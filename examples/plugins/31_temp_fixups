@@ -1,0 +1,39 @@
+# $1 - domain
+# $2 - distrelease
+# $3 - mountpoint
+
+domain=${1}
+distrelease=${2}
+mnt=${3}
+
+function log() {
+    echo -e "$@" >&3
+}
+
+case ${distrelease} in
+    ubuntu*|debian*)
+        # the following are only installed by fakecloud when it bootstraps
+        # the base image.  Make sure they're all installed (eg., if added to 
+        # ~/.fakecloudrc after base image is created).
+        log "Installing extra utilities..."
+        chroot ${mnt} apt-get install -y ${UBUNTU_EXTRA_PACKAGES//,/ }
+        echo manual > ${mnt}/etc/init/avahi-daemon.override
+
+        #if [ ${distrelease} = "ubuntu-precise" ]; then
+            # upgrade the kernel
+            #
+            # XXX can't do this in chroot without some extra work,
+            #     it screws up the kernel's root disk argument :-)
+            #
+            #chroot ${mnt} apt-get install -y linux-generic-lts-raring
+        #fi
+        ;;
+
+    #centos*|rhel*|fedora*)
+        #echo "Disabling iptables..." >&3
+        #service iptables stop
+        #chkconfig iptables off
+        #;;
+esac
+
+# vim: set filetype=sh :

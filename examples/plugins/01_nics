@@ -1,0 +1,15 @@
+# $1 - domain
+# $2 - distrelease
+# $3 - mountpoint
+
+domain=${1}
+distrelease=${2}
+mnt=${3}
+
+for br_name in ${EXTRA_NICS-}
+do
+    echo "Attaching additional vNIC to bridge ${br_name}..." >&3
+    virsh attach-interface $domain bridge $br_name --persistent --model virtio
+done
+
+# vim: set filetype=sh :
