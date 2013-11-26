@@ -149,6 +149,16 @@ function log_debug {
     fi
 }
 
+function summarize_instance() {
+    log "  name:      ${FLAVOR[name]}"
+    log "  disk size: ${FLAVOR[disk]}GB"
+    log "  disk type: ${FLAVOR[disk_type]}"
+    log "  memory:    ${FLAVOR[memory]}"
+    log "  vcpus:     ${FLAVOR[vcpu]}"
+    log "  disk:      ${FLAVOR[disk_image]}"
+    log "  bridge:    ${FLAVOR[bridge]}"
+}
+
 function destroy_instance_by_name() {
     # $1 name
 
@@ -177,8 +187,8 @@ function rekick_instance() {
     local name=${1}
     local was_running=0
 
-    if (virsh list | grep -q ${name}); then
-        log "Terminating instance."
+    if (virsh list | grep -qw ${name}); then
+        log "Terminating instance..."
         was_running=1
         virsh destroy ${name}
     fi
@@ -197,17 +207,18 @@ function rekick_instance() {
         return 1
     fi
 
+    log "Recreating '${name}' as flavor '${flavor}'..."
     source ${BASE_DIR}/flavors/size/${flavor}
+    summarize_instance
     make_instance_drive $distrelease ${FLAVOR[disk]} ${name}
 
+    log "Running plugins..."
     run_plugins ${name} ${distrelease}
 
     if [ ${was_running} -eq 1 ]; then
-        log "Restarting instance"
+        log "Starting instance..."
         virsh start ${name}
     fi
-
-    log "Done"
 }
 
 function spin_instance() {
@@ -249,7 +260,8 @@ function spin_instance() {
     log "Spinning instance of flavor \"${flavor}\""
     source ${BASE_DIR}/flavors/size/${flavor}
 
-    [ -z "${NETWORK_FLAVOR:-}" ] && NETWORK_FLAVOR=$(brctl show | grep -v "bridge name" | cut -f1 | head -n1)
+    [ -z "${NETWORK_FLAVOR:-}" ] && \
+        NETWORK_FLAVOR=$(brctl show |grep -v "bridge name" |cut -f1 |head -n1)
 
     if [ ! -e ${BASE_DIR}/flavors/network/${NETWORK_FLAVOR} ]; then
         BRIDGE=${BRIDGE:-br0}
@@ -269,13 +281,7 @@ function spin_instance() {
     get_qemu_type
     FLAVOR+=([disk_type]=$_RETVAL)
 
-    log "name:      ${FLAVOR[name]}"
-    log "disk size: ${FLAVOR[disk]}G"
-    log "disk type: ${FLAVOR[disk_type]}"
-    log "memory:    ${FLAVOR[memory]}"
-    log "vcpus:     ${FLAVOR[vcpu]}"
-    log "disk:      ${FLAVOR[disk_image]}"
-    log "bridge:    ${FLAVOR[bridge]}"
+    summarize_instance
 
     # let's drop a descriptor file so we know what disk types, etc
     rm -f "${BASE_DIR}/instances/${name}/${name}.vars"
@@ -284,12 +290,12 @@ function spin_instance() {
     done
 
     # now, we have to generate the template xml...
-    eval "echo \"$(< ${BASE_DIR}/flavors/template/${VIRT_TEMPLATE})\"" > ${BASE_DIR}/instances/${name}/${name}.xml
-
-    log_debug "running plugins"
+    eval "echo \"$(< ${BASE_DIR}/flavors/template/${VIRT_TEMPLATE})\"" \
+        > ${BASE_DIR}/instances/${name}/${name}.xml
 
     virsh define ${BASE_DIR}/instances/${name}/${name}.xml
 
+    log "Running plugins..."
     run_plugins ${name} ${distrelease}
 
     log "Starting instance..."
@@ -332,13 +338,18 @@ function run_plugins() {
     # $2 - distrelease
     local use_kpartx=0
 
+    source "${LIB_DIR}/disk/default"
+
     function run_plugins_cleanup() {
         log_debug "Cleaning up run_plugins()"
 
-        [ -e ${tmpdir}/mnt ] && umount ${tmpdir}/mnt
+        unbind_chroot ${tmpdir}/mnt
+        findmnt ${tmpdir}/mnt >/dev/null && umount ${tmpdir}/mnt
+
         [ $use_kpartx -eq 1 ] && kpartx -d ${NBD_DEVICE}
         qemu-nbd -d ${NBD_DEVICE}
-        [ -e /dev/mapper/$(basename ${NBD_DEVICE})p1 ] && dmsetup remove /dev/mapper/$(basename ${NBD_DEVICE})p1
+        [ -e /dev/mapper/$(basename ${NBD_DEVICE})p1 ] && \
+            dmsetup remove /dev/mapper/$(basename ${NBD_DEVICE})p1
         rm -rf ${tmpdir}
         return 1
     }
@@ -349,11 +360,13 @@ function run_plugins() {
 
     modprobe nbd
     qemu-nbd -c $NBD_DEVICE ${BASE_DIR}/instances/${name}/${name}.disk
-    sleep 2
+
+    wait_for_device ${NBD_DEVICE}p1 2 nonfatal
 
     if [ ! -e ${NBD_DEVICE}p1 ]; then
         kpartx -a ${NBD_DEVICE}
         use_kpartx=1
+        wait_for_device /dev/mapper/$(basename ${NBD_DEVICE})p1 2
     fi
 
     if [ -e ${NBD_DEVICE}p1 ]; then
@@ -363,16 +376,21 @@ function run_plugins() {
         mount /dev/mapper/$(basename ${NBD_DEVICE})p1 ${tmpdir}/mnt
     fi
 
+    bind_chroot ${tmpdir}/mnt
+
     for plugin in $(ls ${PLUGIN_DIR} | sort); do
-        log_debug "Running plugin \"${plugin}\"..."
-        if ! ( /bin/bash -x ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt" > /tmp/plugins.log 2>&1 ); then
-            log_debug "Plugin \"${plugin}\": failure"
+        log_debug "Running plugin '${plugin}'..."
+        if /bin/bash -x ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt"
+        then
+            log_debug "Plugin '${plugin}': Success: returned $?"
         else
-            log_debug "Plugin \"${plugin}\": success"
+            log_debug "Plugin '${plugin}': FAILED: returned $?"
         fi
     done
 
+    unbind_chroot ${tmpdir}/mnt
     umount ${tmpdir}/mnt
+
     if [ $use_kpartx -eq 1 ]; then
         kpartx -d ${NBD_DEVICE}
     fi
