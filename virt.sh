@@ -378,6 +378,14 @@ function run_plugins() {
 
     bind_chroot ${tmpdir}/mnt
 
+    # don't run daemons installed (thanks, systemd)
+    cat > ${tmpdir}/mnt/usr/sbin/policy-rc.d <<EOF
+#!/bin/sh
+echo "All runlevel operations denied by policy" >&2
+exit 101
+EOF
+    chmod +x ${tmpdir}/mnt/usr/sbin/policy-rc.d
+
     for plugin in $(ls ${PLUGIN_DIR} | sort); do
         log_debug "Running plugin '${plugin}'..."
         if /bin/bash -x ${PLUGIN_DIR}/${plugin} "${1}" "${2}" "${tmpdir}/mnt"
@@ -387,6 +395,8 @@ function run_plugins() {
             log_debug "Plugin '${plugin}': FAILED: returned $?"
         fi
     done
+
+    rm ${tmpdir}/mnt/usr/sbin/policy-rc.d
 
     unbind_chroot ${tmpdir}/mnt
     umount ${tmpdir}/mnt
